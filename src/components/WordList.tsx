@@ -113,10 +113,9 @@ function getTranslation(word: string): Promise<string> {
 
 // 获取单词图片
 function getWordImage(word: string): string {
-  // Use placeholder.com as image source, displaying word text
-  // Can be replaced with professional image API service
-  const wordText = word.charAt(0).toUpperCase() + word.slice(1)
-  return `https://via.placeholder.com/400x300/4682B4/FFFFFF?text=${encodeURIComponent(wordText)}`
+  // Use Unsplash Source API for real images based on the word
+  // Falls back to SVG placeholder if Unsplash fails (handled in onError)
+  return `https://source.unsplash.com/400x300/?${encodeURIComponent(word)}`
 }
 
 function WordList() {
@@ -263,9 +262,17 @@ function WordList() {
                     src={word.imageUrl}
                     alt={word.word}
                     onError={(e) => {
-                      // If image fails to load, use placeholder
+                      // If image fails to load, use SVG placeholder
                       const target = e.target as HTMLImageElement
-                      target.src = `https://via.placeholder.com/400x300/4682B4/FFFFFF?text=${encodeURIComponent(word.word)}`
+                      const wordText = word.word.charAt(0).toUpperCase() + word.word.slice(1)
+                      const svgPlaceholder = `data:image/svg+xml;base64,${btoa(`
+                        <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+                          <rect width="400" height="300" fill="#4682B4"/>
+                          <text x="50%" y="50%" font-family="Arial, sans-serif" font-size="48" fill="white" 
+                                text-anchor="middle" dominant-baseline="middle">${wordText}</text>
+                        </svg>
+                      `)}`
+                      target.src = svgPlaceholder
                     }}
                   />
                 </div>
