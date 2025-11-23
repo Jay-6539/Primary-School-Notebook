@@ -9,7 +9,7 @@ interface Word {
   dateAdded: string
 }
 
-// 简化的英文到繁体中文翻译字典（可以后续扩展或使用API）
+// English to Traditional Chinese translation dictionary
 const wordDictionary: Record<string, string> = {
   // 动物
   'apple': '蘋果',
@@ -90,32 +90,31 @@ const wordDictionary: Record<string, string> = {
 function getTranslation(word: string): Promise<string> {
   const lowerWord = word.toLowerCase().trim()
   
-  // 首先检查本地字典
-  if (wordDictionary[lowerWord]) {
-    return Promise.resolve(wordDictionary[lowerWord])
-  }
-  
-  // 如果本地字典没有，尝试使用在线翻译API
-  // 这里使用免费的Google Translate API（需要代理或CORS解决方案）
-  // 作为备用方案，我们返回一个占位符
+    // First check local dictionary
+    if (wordDictionary[lowerWord]) {
+      return Promise.resolve(wordDictionary[lowerWord])
+    }
+    
+    // If not in local dictionary, try online translation API
+    // Using free MyMemory Translation API as fallback
   return fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(word)}&langpair=en|zh-TW`)
     .then(response => response.json())
     .then(data => {
       if (data.responseData && data.responseData.translatedText) {
         return data.responseData.translatedText
       }
-      return word // 如果翻译失败，返回原词
+      return word // If translation fails, return original word
     })
     .catch((_error) => {
-      // 如果API调用失败，返回原词或提示
+      // If API call fails, return original word with brackets
       return `[${word}]`
     })
 }
 
 // 获取单词图片
 function getWordImage(word: string): string {
-  // 使用placeholder.com作为备用图片源，显示单词文字
-  // 在实际使用中，可以替换为专业的图片API服务
+  // Use placeholder.com as image source, displaying word text
+  // Can be replaced with professional image API service
   const wordText = word.charAt(0).toUpperCase() + word.slice(1)
   return `https://via.placeholder.com/400x300/4682B4/FFFFFF?text=${encodeURIComponent(wordText)}`
 }
@@ -126,7 +125,7 @@ function WordList() {
   const [isAdding, setIsAdding] = useState(false)
   const [loadingWord, setLoadingWord] = useState<string | null>(null)
 
-  // 从localStorage加载单词
+  // Load words from localStorage
   useEffect(() => {
     const savedWords = localStorage.getItem('aiden-words')
     if (savedWords) {
@@ -143,23 +142,23 @@ function WordList() {
     }
   }, [])
 
-  // 保存单词到localStorage
+  // Save words to localStorage
   useEffect(() => {
     localStorage.setItem('aiden-words', JSON.stringify(words))
   }, [words])
 
-  // 添加新单词
+  // Add new word
   const handleAddWord = async () => {
     const wordToAdd = inputWord.trim().toLowerCase()
     
     if (!wordToAdd) {
-      alert('請輸入一個單詞')
+      alert('Please enter a word')
       return
     }
 
-    // 检查单词是否已存在
+    // Check if word already exists
     if (words.some(w => w.word.toLowerCase() === wordToAdd)) {
-      alert('這個單詞已經在列表中了！')
+      alert('This word is already in the list!')
       setInputWord('')
       return
     }
@@ -186,33 +185,33 @@ function WordList() {
       setInputWord('')
     } catch (error) {
       console.error('Failed to add word:', error)
-      alert('添加單詞時出錯，請重試')
+      alert('Failed to add word. Please try again.')
     } finally {
       setIsAdding(false)
       setLoadingWord(null)
     }
   }
 
-  // 删除单词
+  // Delete word
   const handleDeleteWord = (id: string) => {
-    if (confirm('確定要刪除這個單詞嗎？')) {
+    if (confirm('Are you sure you want to delete this word?')) {
       setWords(words.filter(w => w.id !== id))
     }
   }
 
-  // 播放单词读音
+  // Pronounce word
   const handlePronounce = (word: string) => {
     if ('speechSynthesis' in window) {
       const utterance = new SpeechSynthesisUtterance(word)
       utterance.lang = 'en-US'
-      utterance.rate = 0.8 // 稍微慢一点，适合学习
+      utterance.rate = 0.8 // Slightly slower for learning
       speechSynthesis.speak(utterance)
     } else {
-      alert('您的瀏覽器不支持語音功能')
+      alert('Your browser does not support speech synthesis')
     }
   }
 
-  // 处理回车键
+  // Handle Enter key
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !isAdding) {
       handleAddWord()
@@ -222,8 +221,8 @@ function WordList() {
   return (
     <div className="word-list">
       <div className="word-list-header">
-        <h2>📚 英文單詞學習</h2>
-        <p className="word-list-subtitle">記錄不會的單詞，一起學習吧！</p>
+        <h2>📚 English Words Learning</h2>
+        <p className="word-list-subtitle">Record and learn English words with translations</p>
       </div>
 
       <div className="add-word-section">
@@ -234,7 +233,7 @@ function WordList() {
             value={inputWord}
             onChange={(e) => setInputWord(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="輸入英文單詞..."
+            placeholder="Enter an English word..."
             disabled={isAdding}
           />
           <button
@@ -242,18 +241,18 @@ function WordList() {
             onClick={handleAddWord}
             disabled={isAdding || !inputWord.trim()}
           >
-            {isAdding ? '添加中...' : '+ 添加單詞'}
+            {isAdding ? 'Adding...' : '+ Add Word'}
           </button>
         </div>
         {loadingWord && (
-          <p className="loading-message">正在添加 "{loadingWord}"...</p>
+          <p className="loading-message">Adding "{loadingWord}"...</p>
         )}
       </div>
 
       <div className="words-container">
         {words.length === 0 ? (
           <div className="empty-state">
-            <p>還沒有記錄單詞。在上方輸入單詞開始學習吧！</p>
+            <p>No words recorded yet. Enter a word above to get started!</p>
           </div>
         ) : (
           <div className="words-grid">
@@ -264,7 +263,7 @@ function WordList() {
                     src={word.imageUrl}
                     alt={word.word}
                     onError={(e) => {
-                      // 如果图片加载失败，使用占位符
+                      // If image fails to load, use placeholder
                       const target = e.target as HTMLImageElement
                       target.src = `https://via.placeholder.com/400x300/4682B4/FFFFFF?text=${encodeURIComponent(word.word)}`
                     }}
@@ -276,7 +275,7 @@ function WordList() {
                     <button
                       className="delete-word-btn"
                       onClick={() => handleDeleteWord(word.id)}
-                      title="刪除單詞"
+                      title="Delete word"
                     >
                       ×
                     </button>
@@ -285,9 +284,9 @@ function WordList() {
                   <button
                     className="pronounce-button"
                     onClick={() => handlePronounce(word.word)}
-                    title="播放讀音"
+                    title="Pronounce word"
                   >
-                    🔊 播放讀音
+                    🔊 Pronounce
                   </button>
                 </div>
               </div>
