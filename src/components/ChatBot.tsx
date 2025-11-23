@@ -8,8 +8,8 @@ interface Message {
 }
 
 const QWEN_API_KEY = 'sk-559d7b08f3b445b2aa414dd5e9985143'
-// Qwen API endpoint - using DashScope format
-const QWEN_API_URL = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation'
+// Qwen API endpoint - using OpenAI compatible format
+const QWEN_API_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions'
 
 const ChatBot = () => {
   const [messages, setMessages] = useState<Message[]>([
@@ -59,16 +59,12 @@ const ChatBot = () => {
         },
         body: JSON.stringify({
           model: 'qwen-turbo', // or 'qwen-plus', 'qwen-max' depending on your subscription
-          input: {
-            messages: [
-              { role: 'system', content: systemPrompt },
-              ...conversationMessages
-            ]
-          },
-          parameters: {
-            temperature: 0.7,
-            max_tokens: 500,
-          }
+          messages: [
+            { role: 'system', content: systemPrompt },
+            ...conversationMessages
+          ],
+          temperature: 0.7,
+          max_tokens: 500,
         }),
       })
 
@@ -79,10 +75,16 @@ const ChatBot = () => {
 
       const data = await response.json()
       
-      // Extract response text from Qwen API response
-      // Try different response formats
+      // Extract response text from Qwen API response (OpenAI compatible format)
+      if (data.choices && data.choices.length > 0) {
+        const content = data.choices[0].message?.content
+        if (content) {
+          return content.trim()
+        }
+      }
+      
+      // Fallback: try DashScope format
       if (data.output) {
-        // DashScope format
         if (data.output.choices && data.output.choices.length > 0) {
           return data.output.choices[0].message?.content?.trim() || data.output.choices[0].text?.trim() || ''
         }
@@ -90,18 +92,20 @@ const ChatBot = () => {
           return data.output.text.trim()
         }
       }
-      // OpenAI compatible format
-      if (data.choices && data.choices.length > 0) {
-        return data.choices[0].message?.content?.trim() || ''
-      }
+      
       // Direct text response
       if (data.text) {
         return data.text.trim()
       }
       
+      console.error('Unexpected API response:', data)
       throw new Error('Unexpected API response format')
     } catch (error) {
       console.error('Error calling Qwen API:', error)
+      // Log more details for debugging
+      if (error instanceof Error) {
+        console.error('Error message:', error.message)
+      }
       // Fallback to a friendly error message
       return "I'm sorry, I'm having trouble connecting right now. Please try again in a moment!"
     }
