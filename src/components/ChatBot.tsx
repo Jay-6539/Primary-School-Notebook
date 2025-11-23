@@ -7,6 +7,10 @@ interface Message {
   timestamp: Date
 }
 
+const QWEN_API_KEY = 'sk-559d7b08f3b445b2aa414dd5e9985143'
+// Qwen API endpoint - using DashScope format
+const QWEN_API_URL = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation'
+
 const ChatBot = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -17,6 +21,7 @@ const ChatBot = () => {
     },
   ])
   const [inputText, setInputText] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
@@ -27,56 +32,83 @@ const ChatBot = () => {
     scrollToBottom()
   }, [messages])
 
-  const getAIResponse = (userMessage: string): string => {
-    const lowerMessage = userMessage.toLowerCase()
+  const getAIResponse = async (userMessage: string, conversationHistory: Message[]): Promise<string> => {
+    try {
+      // Build conversation history for context
+      const conversationMessages = conversationHistory
+        .slice(-6) // Keep last 6 messages for context
+        .map(msg => ({
+          role: msg.sender === 'user' ? 'user' : 'assistant',
+          content: msg.text
+        }))
 
-    // Keyword-based responses
-    if (lowerMessage.includes('hello') || lowerMessage.includes('hi') || lowerMessage.includes('hey')) {
-      return "Hello! Nice to meet you! How are you doing today?"
-    }
-    if (lowerMessage.includes('how are you')) {
-      return "I'm doing great! Thanks for asking! How about you?"
-    }
-    if (lowerMessage.includes('name')) {
-      return "I'm Little Si! I'm here to chat with you and help you have fun!"
-    }
-    if (lowerMessage.includes('school') || lowerMessage.includes('class')) {
-      return "I heard you go to St. Paul College Primary School in Junior 1C! That sounds exciting!"
-    }
-    if (lowerMessage.includes('drawing') || lowerMessage.includes('draw')) {
-      return "Drawing is so much fun! I'd love to see your artwork someday!"
-    }
-    if (lowerMessage.includes('book') || lowerMessage.includes('read')) {
-      return "Reading books is wonderful! What's your favorite book? I love stories too!"
-    }
-    if (lowerMessage.includes('tom') && lowerMessage.includes('jerry')) {
-      return "Tom and Jerry is so funny! I love watching their adventures together!"
-    }
-    if (lowerMessage.includes('weather')) {
-      return "You can check the weather forecast in the Weather section! It's always good to know if you need an umbrella!"
-    }
-    if (lowerMessage.includes('thank')) {
-      return "You're welcome! I'm always happy to help!"
-    }
-    if (lowerMessage.includes('bye') || lowerMessage.includes('goodbye')) {
-      return "Goodbye! Have a wonderful day! Come back and chat anytime!"
-    }
+      // Add current user message
+      conversationMessages.push({
+        role: 'user',
+        content: userMessage
+      })
 
-    // Default responses
-    const defaultResponses = [
-      "That's interesting! Tell me more about it!",
-      "Wow! I'd love to learn more about that!",
-      "That sounds fun! What else do you like?",
-      "I'm here to chat with you! What would you like to talk about?",
-      "That's cool! Do you want to share more?",
-      "I'm listening! Tell me more!",
-    ]
+      // Add system prompt
+      const systemPrompt = "You are Little Si, a friendly AI companion for Aiden, a 6-year-old student at St. Paul College Primary School. Be cheerful, encouraging, and age-appropriate. Keep responses concise and engaging."
 
-    return defaultResponses[Math.floor(Math.random() * defaultResponses.length)]
+      const response = await fetch(QWEN_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${QWEN_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: 'qwen-turbo', // or 'qwen-plus', 'qwen-max' depending on your subscription
+          input: {
+            messages: [
+              { role: 'system', content: systemPrompt },
+              ...conversationMessages
+            ]
+          },
+          parameters: {
+            temperature: 0.7,
+            max_tokens: 500,
+          }
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || `API error: ${response.status}`)
+      }
+
+      const data = await response.json()
+      
+      // Extract response text from Qwen API response
+      // Try different response formats
+      if (data.output) {
+        // DashScope format
+        if (data.output.choices && data.output.choices.length > 0) {
+          return data.output.choices[0].message?.content?.trim() || data.output.choices[0].text?.trim() || ''
+        }
+        if (data.output.text) {
+          return data.output.text.trim()
+        }
+      }
+      // OpenAI compatible format
+      if (data.choices && data.choices.length > 0) {
+        return data.choices[0].message?.content?.trim() || ''
+      }
+      // Direct text response
+      if (data.text) {
+        return data.text.trim()
+      }
+      
+      throw new Error('Unexpected API response format')
+    } catch (error) {
+      console.error('Error calling Qwen API:', error)
+      // Fallback to a friendly error message
+      return "I'm sorry, I'm having trouble connecting right now. Please try again in a moment!"
+    }
   }
 
-  const handleSend = () => {
-    if (inputText.trim() === '') return
+  const handleSend = async () => {
+    if (inputText.trim() === '' || isLoading) return
 
     const userMessage: Message = {
       id: messages.length,
@@ -86,18 +118,32 @@ const ChatBot = () => {
     }
 
     setMessages((prev) => [...prev, userMessage])
+    const currentInput = inputText
     setInputText('')
+    setIsLoading(true)
 
-    // Simulate AI thinking time
-    setTimeout(() => {
+    try {
+      const aiResponseText = await getAIResponse(currentInput, messages)
+      
       const aiResponse: Message = {
         id: messages.length + 1,
-        text: getAIResponse(inputText),
+        text: aiResponseText,
         sender: 'ai',
         timestamp: new Date(),
       }
       setMessages((prev) => [...prev, aiResponse])
-    }, 500)
+    } catch (error) {
+      console.error('Error getting AI response:', error)
+      const errorResponse: Message = {
+        id: messages.length + 1,
+        text: "I'm sorry, something went wrong. Please try again!",
+        sender: 'ai',
+        timestamp: new Date(),
+      }
+      setMessages((prev) => [...prev, errorResponse])
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -138,8 +184,8 @@ const ChatBot = () => {
           onKeyPress={handleKeyPress}
           placeholder="Type your message here..."
         />
-        <button className="send-button" onClick={handleSend}>
-          Send
+        <button className="send-button" onClick={handleSend} disabled={isLoading}>
+          {isLoading ? 'Sending...' : 'Send'}
         </button>
       </div>
     </div>
