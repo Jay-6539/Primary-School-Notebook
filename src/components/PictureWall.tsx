@@ -77,7 +77,7 @@ const PictureWall = () => {
       return
     }
 
-    const newPictures: Picture[] = selectedFiles.map((file, index) => {
+    const newPictures: Promise<Picture>[] = selectedFiles.map((file, index) => {
       const reader = new FileReader()
       const id = `uploaded-${Date.now()}-${index}`
       

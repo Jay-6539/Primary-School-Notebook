@@ -22,8 +22,6 @@ function ExamRecords() {
     notes: '',
     images: []
   })
-  const [selectedImages, setSelectedImages] = useState<File[]>([])
-
   // Load records from localStorage on mount
   useEffect(() => {
     const savedRecords = localStorage.getItem('aiden-exam-records')
@@ -41,7 +39,6 @@ function ExamRecords() {
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
-    setSelectedImages(files)
     
     // Convert files to base64
     const imagePromises = files.map(file => {
@@ -68,7 +65,6 @@ function ExamRecords() {
       ...prev,
       images: prev.images?.filter((_, i) => i !== index) || []
     }))
-    setSelectedImages(prev => prev.filter((_, i) => i !== index))
   }
 
   const handleAddRecord = () => {
@@ -96,7 +92,6 @@ function ExamRecords() {
       notes: '',
       images: []
     })
-    setSelectedImages([])
     setShowAddForm(false)
   }
 
