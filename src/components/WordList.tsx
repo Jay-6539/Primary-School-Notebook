@@ -106,7 +106,7 @@ function getTranslation(word: string): Promise<string> {
       }
       return word // 如果翻译失败，返回原词
     })
-    .catch(() => {
+    .catch((_error) => {
       // 如果API调用失败，返回原词或提示
       return `[${word}]`
     })
@@ -138,6 +138,7 @@ function WordList() {
       } catch (error) {
         console.error('Failed to load words:', error)
         setWords([])
+        // error is used in console.error, so it's fine
       }
     }
   }, [])
