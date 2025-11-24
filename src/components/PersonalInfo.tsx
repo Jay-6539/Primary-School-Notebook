@@ -12,32 +12,34 @@ const PersonalInfo = () => {
     return age
   }, [])
 
-  const infoItems = [
-    { label: 'Name', value: 'LIU Hei Yuen Aiden' },
-    { label: 'Age', value: `${age} years old` },
-    { label: 'Birthday', value: '5th February, 2019' },
-    { label: 'Primary School', value: 'St. Paul College Primary School' },
-    { label: 'Class', value: 'Junior 1C' },
-    { label: 'Student Number', value: '17' },
-    { label: 'School Bus', value: '4E' },
-    { label: 'Home', value: 'Seaside Sonata' },
-    { label: 'Hobbies', value: 'Drawing, Reading books' },
-  ]
-
   return (
-    <div className="personal-info">
-      <div className="info-card">
-        <h2>About Aiden</h2>
-        <div className="info-grid">
-          {infoItems.map((item, index) => (
-            <div key={index} className="info-item">
-              <span className="info-label">{item.label}:</span>
-              <span className="info-value">{item.value}</span>
-            </div>
-          ))}
+    <section className="personal-summary">
+      <div className="summary-text">
+        <p className="summary-intro">Hello, I’m Aiden 👋</p>
+        <p>
+          I am {age} years old and study in Junior 1C at St. Paul College Primary School. I love drawing,
+          reading with Dad and Mom, and riding the 4E school bus to class every day.
+        </p>
+      </div>
+      <div className="summary-details">
+        <div className="summary-item">
+          <span className="summary-label">School</span>
+          <span className="summary-value">St. Paul College Primary School</span>
+        </div>
+        <div className="summary-item">
+          <span className="summary-label">Class</span>
+          <span className="summary-value">Junior 1C · Student #17</span>
+        </div>
+        <div className="summary-item">
+          <span className="summary-label">Birthday</span>
+          <span className="summary-value">5 Feb 2019</span>
+        </div>
+        <div className="summary-item">
+          <span className="summary-label">Home Base</span>
+          <span className="summary-value">Seaside Sonata</span>
         </div>
       </div>
-    </div>
+    </section>
   )
 }
 

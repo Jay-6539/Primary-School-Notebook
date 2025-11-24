@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import PersonalInfo from './components/PersonalInfo'
+import ParentFeedback from './components/ParentFeedback'
 import ChatBot from './components/ChatBot'
 import VideoGallery from './components/VideoGallery'
 import WeatherForecast from './components/WeatherForecast'
@@ -72,6 +73,7 @@ function App() {
         {activeSection === 'home' && (
           <div className="home-section">
             <PersonalInfo />
+            <ParentFeedback />
           </div>
         )}
         {activeSection === 'chat' && <ChatBot />}
