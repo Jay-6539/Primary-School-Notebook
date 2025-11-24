@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 
-const SCHOOL_BADGE_URL = 'https://www.spc-ps.edu.hk/sites/default/files/styles/medium/public/images/logo.png?itok=qTPIYOvW'
+const SCHOOL_BADGE_URL = 'https://www.chsc.hk/psp2025/pic/logo_2.jpg'
 
 const PersonalInfo = () => {
   const age = useMemo(() => {
