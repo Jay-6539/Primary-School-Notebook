@@ -6,6 +6,7 @@ import WeatherForecast from './components/WeatherForecast'
 import PictureWall from './components/PictureWall'
 import ExamRecords from './components/ExamRecords'
 import WordList from './components/WordList'
+import Bank from './components/Bank'
 import './styles/App.css'
 
 function App() {
@@ -58,6 +59,12 @@ function App() {
           >
             English Words
           </button>
+          <button 
+            className={activeSection === 'bank' ? 'active' : ''}
+            onClick={() => setActiveSection('bank')}
+          >
+            Aiden Bank
+          </button>
         </nav>
       </header>
 
@@ -73,6 +80,7 @@ function App() {
         {activeSection === 'pictures' && <PictureWall />}
         {activeSection === 'exams' && <ExamRecords />}
         {activeSection === 'words' && <WordList />}
+        {activeSection === 'bank' && <Bank />}
       </main>
 
       <footer className="footer">
