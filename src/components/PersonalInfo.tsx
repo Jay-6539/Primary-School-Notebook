@@ -1,5 +1,7 @@
 import { useMemo } from 'react'
 
+const SCHOOL_BADGE_URL = 'https://www.spc-ps.edu.hk/sites/default/files/styles/medium/public/images/logo.png?itok=qTPIYOvW'
+
 const PersonalInfo = () => {
   const age = useMemo(() => {
     const today = new Date()
@@ -14,12 +16,18 @@ const PersonalInfo = () => {
 
   return (
     <section className="personal-summary">
-      <div className="summary-text">
-        <p className="summary-intro">Hello, I’m Aiden 👋</p>
-        <p>
-          I am {age} years old and study in Junior 1C at St. Paul College Primary School. I love drawing,
-          reading with Dad and Mom, and riding the 4E school bus to class every day.
-        </p>
+      <div className="summary-header">
+        <div className="summary-text">
+          <p className="summary-intro">Hello, I’m Aiden 👋</p>
+          <p>
+            I am {age} years old and study in Junior 1C at St. Paul College Primary School. I love drawing,
+            reading with Dad and Mom, and riding the 4E school bus to class every day.
+          </p>
+        </div>
+        <div className="school-badge">
+          <img src={SCHOOL_BADGE_URL} alt="St. Paul College Primary School badge" />
+          <span>St. Paul College Primary School</span>
+        </div>
       </div>
       <div className="summary-details">
         <div className="summary-item">
