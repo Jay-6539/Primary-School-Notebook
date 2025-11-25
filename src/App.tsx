@@ -34,7 +34,7 @@ function App() {
             className={activeSection === 'videos' ? 'active' : ''}
             onClick={() => setActiveSection('videos')}
           >
-            Videos
+            UNO Game
           </button>
           <button 
             className={activeSection === 'weather' ? 'active' : ''}
