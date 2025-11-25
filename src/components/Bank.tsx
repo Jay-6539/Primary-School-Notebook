@@ -97,12 +97,10 @@ const Bank = () => {
   }
 
   return (
-    <div className="bank">
-      <div className="bank-header">
-        <div>
-          <h2>Aiden Bank</h2>
-          <p className="bank-subtitle">Track every reward, red packet, and gift</p>
-        </div>
+    <div className="bank section-card">
+      <div className="page-title">
+        <h2>Aiden Bank</h2>
+        <p>Track every reward, red packet, and gift</p>
         <div className="balance-card">
           <span className="balance-label">Current Balance</span>
           <span className="balance-value">{formatCurrency(balance)}</span>

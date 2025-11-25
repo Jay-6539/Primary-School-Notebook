@@ -1,23 +1,5 @@
-.uno-game {
-  background: white;
-  border-radius: 8px;
-  padding: 2rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.uno-game h2 {
-  color: #1a4d7a;
-  font-size: 1.75rem;
-  margin-bottom: 0.5rem;
-  text-align: center;
-  font-weight: 600;
-}
-
-.uno-subtitle {
-  text-align: center;
-  color: #666;
-  font-size: 0.9rem;
-  margin-bottom: 2rem;
+.uno-game .page-title .page-image img {
+  max-width: 140px;
 }
 
 .players-grid {
@@ -183,5 +165,6 @@
   .players-grid {
     grid-template-columns: 1fr;
   }
+}
 }
 

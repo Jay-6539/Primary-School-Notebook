@@ -114,17 +114,15 @@ const PictureWall = () => {
   }
 
   return (
-    <div className="picture-wall">
-      <div className="picture-wall-header">
-        <div>
-          <h2>Picture Wall</h2>
-          <p className="picture-wall-subtitle">Click on any picture to view it larger!</p>
-        </div>
+    <div className="picture-wall section-card">
+      <div className="page-title">
+        <h2>Picture Wall</h2>
+        <p>Click on any picture to view it larger</p>
         <button 
-          className="upload-picture-btn"
+          className="primary-btn"
           onClick={() => setShowUploadForm(!showUploadForm)}
         >
-          {showUploadForm ? 'Cancel' : '+ Upload Pictures'}
+          {showUploadForm ? 'Cancel Upload' : '+ Upload Pictures'}
         </button>
       </div>
 

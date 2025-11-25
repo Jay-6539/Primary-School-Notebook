@@ -231,23 +231,24 @@ const WordList = () => {
   const currentSpellingWord = todaySpellingWords[currentSpellingIndex]
 
   return (
-    <div className="word-list">
-      <div className="word-list-header">
+    <div className="word-list section-card">
+      <div className="page-title">
         <h2>📚 English Words</h2>
-        <div className="tabs">
-          <button
-            className={`tab ${activeTab === 'recognition' ? 'active' : ''}`}
-            onClick={() => setActiveTab('recognition')}
-          >
-            Recognition Words
-          </button>
-          <button
-            className={`tab ${activeTab === 'spelling' ? 'active' : ''}`}
-            onClick={() => setActiveTab('spelling')}
-          >
-            Spelling Practice
-          </button>
-        </div>
+        <p>Switch between recognition words and daily spelling practice</p>
+      </div>
+      <div className="tabs">
+        <button
+          className={`tab ${activeTab === 'recognition' ? 'active' : ''}`}
+          onClick={() => setActiveTab('recognition')}
+        >
+          Recognition Words
+        </button>
+        <button
+          className={`tab ${activeTab === 'spelling' ? 'active' : ''}`}
+          onClick={() => setActiveTab('spelling')}
+        >
+          Spelling Practice
+        </button>
       </div>
 
       {activeTab === 'recognition' && (

@@ -158,10 +158,10 @@ const ChatBot = () => {
   }
 
   return (
-    <div className="chatbot">
-      <div className="chat-header">
+    <div className="chatbot section-card">
+      <div className="page-title">
         <h2>Chat with Little Si</h2>
-        <p className="chat-subtitle">Your friendly AI companion!</p>
+        <p>Your friendly AI companion!</p>
       </div>
       <div className="chat-messages">
         {messages.map((message) => (

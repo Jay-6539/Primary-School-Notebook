@@ -274,6 +274,51 @@ button {
   font-weight: 600;
 }
 
+/* Page title */
+.page-title {
+  text-align: center;
+  margin-bottom: 1.25rem;
+}
+
+.page-title h2 {
+  margin: 0;
+  font-size: 1.75rem;
+  color: var(--brand-primary);
+}
+
+.page-title p {
+  margin-top: 0.35rem;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.page-title .page-image {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: center;
+}
+
+.page-title .page-image img {
+  max-width: 160px;
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+  border: 3px solid white;
+}
+
+.weather-title-actions {
+  margin-top: 0.85rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.weather-title-actions .primary-btn:disabled {
+  background: #b0bec5;
+  cursor: not-allowed;
+}
+
 .school-badge {
   display: flex;
   flex-direction: column;
@@ -305,36 +350,12 @@ button {
   }
 }
 
-/* Chatbot Styles - Clean Design */
+/* Chatbot Styles */
 .chatbot {
-  background: white;
-  border-radius: 8px;
-  padding: 2rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  max-width: 900px;
-  margin: 0 auto;
   display: flex;
   flex-direction: column;
   height: 70vh;
-}
-
-.chat-header {
-  text-align: center;
-  margin-bottom: 1.5rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.chat-header h2 {
-  color: #1a4d7a;
-  font-size: 1.5rem;
-  margin-bottom: 0.5rem;
-  font-weight: 600;
-}
-
-.chat-subtitle {
-  color: #666;
-  font-size: 0.9rem;
+  max-height: 650px;
 }
 
 .chat-messages {

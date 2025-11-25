@@ -102,11 +102,12 @@ function ExamRecords() {
   }
 
   return (
-    <div className="exam-records">
-      <div className="exam-records-header">
+    <div className="exam-records section-card">
+      <div className="page-title">
         <h2>📝 Exam Records</h2>
+        <p>Store every exam result, notes, and photos here</p>
         <button 
-          className="add-record-btn"
+          className="primary-btn"
           onClick={() => setShowAddForm(!showAddForm)}
         >
           {showAddForm ? 'Cancel' : '+ Add New Exam'}

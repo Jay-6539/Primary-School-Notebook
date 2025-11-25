@@ -17,6 +17,9 @@ const PLAYER_LABELS: Record<Player, string> = {
   aiden: 'Aiden'
 }
 
+const UNO_IMAGE_URL =
+  'https://www.toysrus.com.hk/dw/image/v2/BDGJ_PRD/on/demandware.static/-/Sites-master-catalog-toysrus/default/dwdb1318cd/1/2/4/8/12489433f2ff87dff39e30006c9ccfbf2529d82f_45918_02.jpg?sw=500&sh=500&q=75'
+
 const PLAYER_EMOJIS: Record<Player, string> = {
   mama: '👩',
   baba: '👨',
@@ -114,9 +117,14 @@ const VideoGallery = () => {
   }
 
   return (
-    <div className="uno-game">
-      <h2>UNO Game Score</h2>
-      <p className="uno-subtitle">Click on a player to record a win!</p>
+    <div className="uno-game section-card">
+      <div className="page-title">
+        <h2>UNO Game Score</h2>
+        <p>Click on a player to record a win!</p>
+        <div className="page-image">
+          <img src={UNO_IMAGE_URL} alt="UNO card deck" />
+        </div>
+      </div>
       
       <div className="players-grid">
         {scores.map(score => (

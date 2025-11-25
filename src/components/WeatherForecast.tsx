@@ -176,29 +176,17 @@ Update the values based on realistic Hong Kong weather. Return ONLY the JSON obj
   const { location, current, forecast } = weatherData
 
   return (
-    <div className="weather-forecast">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+    <div className="weather-forecast section-card">
+      <div className="page-title">
         <h2>Weather Forecast</h2>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        <p>Daily update powered by Qwen</p>
+        <div className="weather-title-actions">
           {lastUpdate && (
-            <span style={{ fontSize: '0.85rem', color: '#666' }}>
+            <span className="muted-text">
               Updated: {lastUpdate.toLocaleTimeString()}
             </span>
           )}
-          <button
-            onClick={fetchWeatherFromQwen}
-            disabled={isLoading}
-            style={{
-              padding: '0.5rem 1rem',
-              background: isLoading ? '#ccc' : '#1a4d7a',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: isLoading ? 'not-allowed' : 'pointer',
-              fontSize: '0.9rem',
-              fontWeight: 500,
-            }}
-          >
+          <button className="primary-btn" onClick={fetchWeatherFromQwen} disabled={isLoading}>
             {isLoading ? 'Loading...' : 'Refresh'}
           </button>
         </div>

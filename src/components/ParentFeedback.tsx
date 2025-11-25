@@ -122,12 +122,10 @@ const ParentFeedback = () => {
   }
 
   return (
-    <section className="parent-feedback">
-      <div className="section-header">
-        <div>
-          <h2>Parent Scorecard</h2>
-          <p>Dad and Mom mark today’s accuracy and attitude. Each “Good” adds HK$2 to Aiden Bank.</p>
-        </div>
+    <section className="parent-feedback section-card">
+      <div className="page-title">
+        <h2>Parent Scorecard</h2>
+        <p>Dad and Mom mark today’s accuracy and attitude. Each “Good” adds HK$2 to Aiden Bank.</p>
         {rewardMessage && <span className="reward-badge">{rewardMessage}</span>}
       </div>
 
