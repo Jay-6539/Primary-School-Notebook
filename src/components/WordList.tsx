@@ -58,7 +58,33 @@ function getTranslation(word: string): Promise<string> {
 
 const WordList = () => {
   const [activeTab, setActiveTab] = useState<WordType>('recognition')
-  const [words, setWords] = useState<Word[]>([])
+  const [words, setWords] = useState<Word[]>(() => {
+    try {
+      const savedV2 = localStorage.getItem(LOCAL_STORAGE_KEY)
+      if (savedV2) {
+        return JSON.parse(savedV2)
+      }
+
+      const legacy = localStorage.getItem('aiden-words')
+      if (legacy) {
+        const parsedLegacy = JSON.parse(legacy)
+        if (Array.isArray(parsedLegacy)) {
+          const migrated: Word[] = parsedLegacy.map((item: any) => ({
+            id: item.id || Date.now().toString(),
+            word: item.word,
+            translation: item.translation || wordDictionary[item.word?.toLowerCase()] || item.word,
+            type: 'recognition',
+            dateAdded: item.dateAdded || new Date().toISOString()
+          }))
+          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(migrated))
+          return migrated
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load words:', error)
+    }
+    return []
+  })
   const [inputWord, setInputWord] = useState('')
   const [isAdding, setIsAdding] = useState(false)
   const [todaySpellingWords, setTodaySpellingWords] = useState<string[]>([])
@@ -67,17 +93,6 @@ const WordList = () => {
 
   const LOCAL_STORAGE_KEY = 'aiden-words-v2'
   const SPELLING_SESSION_KEY = 'spelling-session'
-
-  useEffect(() => {
-    const saved = localStorage.getItem(LOCAL_STORAGE_KEY)
-    if (saved) {
-      try {
-        setWords(JSON.parse(saved))
-      } catch (error) {
-        console.error('Failed to load words:', error)
-      }
-    }
-  }, [])
 
   useEffect(() => {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(words))
