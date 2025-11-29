@@ -419,6 +419,7 @@
 
   .add-word-button {
     width: 100%;
+    min-height: 44px;
   }
 
   .word-list-header h2 {
@@ -431,10 +432,42 @@
 
   .spelling-btn {
     width: 100%;
+    min-height: 44px;
   }
 
   .word-main {
     flex-wrap: wrap;
     gap: 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .tabs {
+    gap: 0.35rem;
+    flex-wrap: wrap;
+  }
+
+  .tab {
+    padding: 0.6rem 1rem;
+    font-size: 0.85rem;
+    flex: 1;
+    min-width: calc(50% - 0.35rem);
+    min-height: 44px;
+  }
+
+  .word-item-compact {
+    padding: 0.75rem;
+  }
+
+  .word-text-compact {
+    font-size: 1rem;
+  }
+
+  .spelling-session-card {
+    padding: 1rem;
+  }
+
+  .add-word-input {
+    font-size: 16px; /* 防止 iOS 自动缩放 */
   }
 }
