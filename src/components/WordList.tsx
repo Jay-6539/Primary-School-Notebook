@@ -181,15 +181,22 @@ const WordList = () => {
       ...SPELLING_WORD_BANKS.flyers
     ]
     
+    // Get all mastered words to exclude them
+    const masteredWords = new Set(
+      Object.values(spellingHistory)
+        .filter(h => h.mastered)
+        .map(h => h.word.toLowerCase())
+    )
+    
     // Get words with errors from history (not mastered)
     const errorWords = Object.values(spellingHistory)
       .filter(h => !h.mastered && h.totalErrors > 0)
       .sort((a, b) => b.totalErrors - a.totalErrors) // Sort by error count descending
       .map(h => h.word)
     
-    // Get words that need review from words list
+    // Get words that need review from words list (exclude mastered)
     const reviewWords = words
-      .filter(w => w.type === 'spelling' && w.needsReview)
+      .filter(w => w.type === 'spelling' && w.needsReview && !masteredWords.has(w.word.toLowerCase()))
       .map(w => w.word)
     
     // Combine error words and review words, remove duplicates
@@ -202,19 +209,22 @@ const WordList = () => {
     // First, add priority words (up to 10)
     for (const word of priorityWords) {
       if (selected.length >= 10) break
-      if (!usedWords.has(word.toLowerCase())) {
+      const wordLower = word.toLowerCase()
+      if (!usedWords.has(wordLower) && !masteredWords.has(wordLower)) {
         selected.push(word)
-        usedWords.add(word.toLowerCase())
+        usedWords.add(wordLower)
       }
     }
     
-    // Fill remaining slots with random words from word banks
-    const shuffled = [...allWords].sort(() => Math.random() - 0.5)
+    // Fill remaining slots with random words from word banks (exclude mastered words)
+    const availableWords = allWords.filter(word => !masteredWords.has(word.toLowerCase()))
+    const shuffled = [...availableWords].sort(() => Math.random() - 0.5)
     for (const word of shuffled) {
       if (selected.length >= 10) break
-      if (!usedWords.has(word.toLowerCase())) {
+      const wordLower = word.toLowerCase()
+      if (!usedWords.has(wordLower)) {
         selected.push(word)
-        usedWords.add(word.toLowerCase())
+        usedWords.add(wordLower)
       }
     }
     
