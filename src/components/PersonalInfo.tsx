@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import coverPhoto from '../assets/cover-photo.jpg'
 
 const SCHOOL_BADGE_URL = 'https://www.chsc.hk/psp2025/pic/logo_2.jpg'
 
@@ -17,6 +18,9 @@ const PersonalInfo = () => {
   return (
     <section className="personal-summary">
       <div className="summary-header">
+        <div className="family-photo">
+          <img src={coverPhoto} alt="Family Photo" className="cover-photo-small" />
+        </div>
         <div className="summary-text">
           <p className="summary-intro">Hello, I’m Aiden 👋</p>
           <p>

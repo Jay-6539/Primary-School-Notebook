@@ -8,7 +8,6 @@ import PictureWall from './components/PictureWall'
 import ExamRecords from './components/ExamRecords'
 import WordList from './components/WordList'
 import Bank from './components/Bank'
-import coverPhoto from './assets/cover-photo.jpg'
 import './styles/App.css'
 
 function App() {
@@ -73,13 +72,6 @@ function App() {
       <main className="main-content">
         {activeSection === 'home' && (
           <div className="home-section">
-            <div className="cover-photo-container">
-              <img 
-                src={coverPhoto} 
-                alt="Family Photo" 
-                className="cover-photo"
-              />
-            </div>
             <PersonalInfo />
             <ParentFeedback />
           </div>
@@ -101,4 +93,3 @@ function App() {
 }
 
 export default App
-
