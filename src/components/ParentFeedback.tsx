@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import './ParentFeedback.css'
+import { fetchParentFeedback, saveParentFeedback } from '../lib/supabaseService'
+import { fetchBankEntries, saveBankEntry } from '../lib/supabaseService'
 
 type Parent = 'dad' | 'mom'
 type Metric = 'accuracy' | 'attitude'
@@ -41,73 +43,117 @@ const createEmptyFeedback = (): DailyFeedback => ({
   mom: { accuracy: null, attitude: null }
 })
 
-const loadFeedbackHistory = (): FeedbackHistory => {
-  try {
-    const saved = localStorage.getItem(FEEDBACK_STORAGE_KEY)
-    if (!saved) return {}
-    return JSON.parse(saved)
-  } catch (error) {
-    console.error('Failed to load feedback history', error)
-    return {}
-  }
-}
-
 const ParentFeedback = () => {
   const todayKey = useMemo(() => new Date().toISOString().split('T')[0], [])
-  const [feedbackData, setFeedbackData] = useState<FeedbackHistory>(() => loadFeedbackHistory())
+  const [feedbackData, setFeedbackData] = useState<FeedbackHistory>({})
   const [rewardMessage, setRewardMessage] = useState('')
+  const [isLoading, setIsLoading] = useState(true)
 
   const todayFeedback = feedbackData[todayKey] ?? createEmptyFeedback()
 
+  // Load data from Supabase on mount
   useEffect(() => {
-    localStorage.setItem(FEEDBACK_STORAGE_KEY, JSON.stringify(feedbackData))
-  }, [feedbackData])
+    const loadData = async () => {
+      setIsLoading(true)
+      try {
+        const supabaseFeedback = await fetchParentFeedback()
+        if (Object.keys(supabaseFeedback).length > 0) {
+          setFeedbackData(supabaseFeedback)
+        } else {
+          // Fallback to localStorage
+          try {
+            const saved = localStorage.getItem(FEEDBACK_STORAGE_KEY)
+            if (saved) {
+              const localFeedback = JSON.parse(saved)
+              setFeedbackData(localFeedback)
+              // Migrate to Supabase
+              for (const [date, data] of Object.entries(localFeedback)) {
+                await saveParentFeedback(date, data)
+              }
+            }
+          } catch (error) {
+            console.error('Failed to load feedback history', error)
+          }
+        }
+      } catch (error) {
+        console.error('Error loading parent feedback:', error)
+        // Fallback to localStorage
+        try {
+          const saved = localStorage.getItem(FEEDBACK_STORAGE_KEY)
+          if (saved) {
+            setFeedbackData(JSON.parse(saved))
+          }
+        } catch (e) {
+          console.error('Failed to load feedback history', e)
+        }
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    loadData()
+  }, [])
 
-  const addBankReward = (description: string) => {
+  // Sync to localStorage and Supabase
+  useEffect(() => {
+    if (Object.keys(feedbackData).length >= 0 && !isLoading) {
+      localStorage.setItem(FEEDBACK_STORAGE_KEY, JSON.stringify(feedbackData))
+    }
+  }, [feedbackData, isLoading])
+
+  const addBankReward = async (description: string) => {
     try {
-      const savedBank = localStorage.getItem(BANK_STORAGE_KEY)
-      const bankEntries = savedBank ? JSON.parse(savedBank) : []
       const newEntry = {
         id: crypto.randomUUID(),
         date: new Date().toISOString(),
         amount: BANK_REWARD_AMOUNT,
         description,
-        category: 'reward'
+        category: 'reward' as const
       }
-      const updatedBank = [newEntry, ...bankEntries]
-      localStorage.setItem(BANK_STORAGE_KEY, JSON.stringify(updatedBank))
-      setRewardMessage(`+HK$${BANK_REWARD_AMOUNT} added to Aiden Bank`)
-      setTimeout(() => setRewardMessage(''), 3000)
+      const success = await saveBankEntry(newEntry)
+      if (success) {
+        // Also update localStorage for backward compatibility
+        const savedBank = localStorage.getItem(BANK_STORAGE_KEY)
+        const bankEntries = savedBank ? JSON.parse(savedBank) : []
+        const updatedBank = [newEntry, ...bankEntries]
+        localStorage.setItem(BANK_STORAGE_KEY, JSON.stringify(updatedBank))
+        setRewardMessage(`+HK$${BANK_REWARD_AMOUNT} added to Aiden Bank`)
+        setTimeout(() => setRewardMessage(''), 3000)
+      } else {
+        console.error('Failed to add reward to bank')
+      }
     } catch (error) {
       console.error('Failed to add reward to bank', error)
     }
   }
 
-  const handleStatusChange = (parent: Parent, metric: Metric, status: 'good' | 'bad') => {
-    setFeedbackData((prev) => {
-      const currentDay = prev[todayKey] ?? createEmptyFeedback()
-      const previousStatus = currentDay[parent][metric]
-      if (previousStatus === status) return prev
+  const handleStatusChange = async (parent: Parent, metric: Metric, status: 'good' | 'bad') => {
+    const currentDay = feedbackData[todayKey] ?? createEmptyFeedback()
+    const previousStatus = currentDay[parent][metric]
+    if (previousStatus === status) return
 
-      const updatedDay: DailyFeedback = {
-        ...currentDay,
-        [parent]: {
-          ...currentDay[parent],
-          [metric]: status
-        }
+    const updatedDay: DailyFeedback = {
+      ...currentDay,
+      [parent]: {
+        ...currentDay[parent],
+        [metric]: status
       }
+    }
 
-      const nextData = {
-        ...prev,
-        [todayKey]: updatedDay
-      }
+    const nextData = {
+      ...feedbackData,
+      [todayKey]: updatedDay
+    }
 
+    // Save to Supabase
+    const success = await saveParentFeedback(todayKey, updatedDay)
+    if (success) {
+      setFeedbackData(nextData)
       if (status === 'good' && previousStatus !== 'good') {
         addBankReward(`${PARENT_LABELS[parent]} marked ${METRIC_LABELS[metric]} as good`)
       }
-
-      return nextData
-    })
+    } else {
+      alert('Failed to save feedback to database')
+    }
   }
 
   const historyEntries = useMemo(() => {

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import './Bank.css'
+import { fetchBankEntries, saveBankEntry, deleteBankEntry } from '../lib/supabaseService'
 
 type BankCategory = 'reward' | 'red-packet' | 'gift' | 'other'
 
@@ -29,28 +30,63 @@ const Bank = () => {
   const [amount, setAmount] = useState('')
   const [category, setCategory] = useState<BankCategory>('reward')
   const [error, setError] = useState('')
+  const [isLoading, setIsLoading] = useState(true)
 
+  // Load data from Supabase on mount
   useEffect(() => {
-    const saved = localStorage.getItem(LOCAL_STORAGE_KEY)
-    if (saved) {
+    const loadData = async () => {
+      setIsLoading(true)
       try {
-        setEntries(JSON.parse(saved))
-      } catch (err) {
-        console.error('Failed to parse bank entries from storage', err)
+        const supabaseEntries = await fetchBankEntries()
+        if (supabaseEntries.length > 0) {
+          setEntries(supabaseEntries)
+        } else {
+          // Fallback to localStorage
+          const saved = localStorage.getItem(LOCAL_STORAGE_KEY)
+          if (saved) {
+            try {
+              const localEntries = JSON.parse(saved)
+              setEntries(localEntries)
+              // Migrate to Supabase
+              for (const entry of localEntries) {
+                await saveBankEntry(entry)
+              }
+            } catch (err) {
+              console.error('Failed to parse bank entries from storage', err)
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error loading bank entries:', error)
+        // Fallback to localStorage
+        const saved = localStorage.getItem(LOCAL_STORAGE_KEY)
+        if (saved) {
+          try {
+            setEntries(JSON.parse(saved))
+          } catch (err) {
+            console.error('Failed to parse bank entries from storage', err)
+          }
+        }
+      } finally {
+        setIsLoading(false)
       }
     }
+    loadData()
   }, [])
 
+  // Sync to localStorage and Supabase
   useEffect(() => {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(entries))
-  }, [entries])
+    if (entries.length >= 0 && !isLoading) {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(entries))
+    }
+  }, [entries, isLoading])
 
   const balance = useMemo(
     () => entries.reduce((total, entry) => total + entry.amount, 0),
     [entries]
   )
 
-  const handleAddEntry = () => {
+  const handleAddEntry = async () => {
     setError('')
     const parsedAmount = parseFloat(amount)
 
@@ -72,28 +108,41 @@ const Bank = () => {
       category
     }
 
-    setEntries((prev) => [newEntry, ...prev])
-    setDescription('')
-    setAmount('')
-    setCategory('reward')
+    const success = await saveBankEntry(newEntry)
+    if (success) {
+      setEntries((prev) => [newEntry, ...prev])
+      setDescription('')
+      setAmount('')
+      setCategory('reward')
+    } else {
+      setError('Failed to save entry to database')
+    }
   }
 
-  const handleQuickAdd = (value: number, label: string) => {
-    setEntries((prev) => [
-      {
-        id: crypto.randomUUID(),
-        date: new Date().toISOString(),
-        amount: value,
-        description: label,
-        category: 'reward'
-      },
-      ...prev
-    ])
+  const handleQuickAdd = async (value: number, label: string) => {
+    const newEntry: BankEntry = {
+      id: crypto.randomUUID(),
+      date: new Date().toISOString(),
+      amount: value,
+      description: label,
+      category: 'reward'
+    }
+    const success = await saveBankEntry(newEntry)
+    if (success) {
+      setEntries((prev) => [newEntry, ...prev])
+    } else {
+      alert('Failed to save entry to database')
+    }
   }
 
-  const handleDeleteEntry = (id: string) => {
+  const handleDeleteEntry = async (id: string) => {
     if (!confirm('Delete this entry?')) return
-    setEntries((prev) => prev.filter((entry) => entry.id !== id))
+    const success = await deleteBankEntry(id)
+    if (success) {
+      setEntries((prev) => prev.filter((entry) => entry.id !== id))
+    } else {
+      alert('Failed to delete entry from database')
+    }
   }
 
   return (

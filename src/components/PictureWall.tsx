@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { fetchPictures, savePicture, deletePicture } from '../lib/supabaseService'
 
 interface Picture {
   id: string
@@ -46,22 +47,53 @@ const PictureWall = () => {
   const [showUploadForm, setShowUploadForm] = useState(false)
   const [uploadTitle, setUploadTitle] = useState('')
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  // Load uploaded pictures from localStorage on mount
+  // Load uploaded pictures from Supabase on mount
   useEffect(() => {
-    const savedPictures = localStorage.getItem('aiden-picture-wall')
-    if (savedPictures) {
+    const loadPictures = async () => {
+      setIsLoading(true)
       try {
-        const uploadedPictures = JSON.parse(savedPictures)
-        setPictures([...defaultPictures, ...uploadedPictures])
-      } catch (e) {
-        console.error('Error loading saved pictures:', e)
+        const supabasePictures = await fetchPictures()
+        if (supabasePictures.length > 0) {
+          setPictures([...defaultPictures, ...supabasePictures])
+        } else {
+          // Fallback to localStorage
+          const savedPictures = localStorage.getItem('aiden-picture-wall')
+          if (savedPictures) {
+            try {
+              const uploadedPictures = JSON.parse(savedPictures)
+              setPictures([...defaultPictures, ...uploadedPictures])
+              // Migrate to Supabase
+              for (const pic of uploadedPictures) {
+                await savePicture(pic)
+              }
+            } catch (e) {
+              console.error('Error loading saved pictures:', e)
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error loading pictures:', error)
+        // Fallback to localStorage
+        const savedPictures = localStorage.getItem('aiden-picture-wall')
+        if (savedPictures) {
+          try {
+            const uploadedPictures = JSON.parse(savedPictures)
+            setPictures([...defaultPictures, ...uploadedPictures])
+          } catch (e) {
+            console.error('Error loading saved pictures:', e)
+          }
+        }
+      } finally {
+        setIsLoading(false)
       }
     }
+    loadPictures()
   }, [])
 
-  // Save uploaded pictures to localStorage
-  const savePictures = (newPictures: Picture[]) => {
+  // Save uploaded pictures to localStorage (for backward compatibility)
+  const savePicturesToLocal = (newPictures: Picture[]) => {
     const uploadedPictures = newPictures.filter(p => p.isUploaded)
     localStorage.setItem('aiden-picture-wall', JSON.stringify(uploadedPictures))
   }
@@ -94,22 +126,31 @@ const PictureWall = () => {
       })
     })
 
-    Promise.all(newPictures).then((uploadedPictures) => {
+    Promise.all(newPictures).then(async (uploadedPictures) => {
+      // Save to Supabase
+      for (const pic of uploadedPictures) {
+        await savePicture(pic)
+      }
       const updatedPictures = [...pictures, ...uploadedPictures]
       setPictures(updatedPictures)
-      savePictures(updatedPictures)
+      savePicturesToLocal(updatedPictures)
       setSelectedFiles([])
       setUploadTitle('')
       setShowUploadForm(false)
     })
   }
 
-  const handleDeletePicture = (id: string, e: React.MouseEvent) => {
+  const handleDeletePicture = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
     if (confirm('Are you sure you want to delete this picture?')) {
-      const updatedPictures = pictures.filter(p => p.id !== id)
-      setPictures(updatedPictures)
-      savePictures(updatedPictures)
+      const success = await deletePicture(id)
+      if (success) {
+        const updatedPictures = pictures.filter(p => p.id !== id)
+        setPictures(updatedPictures)
+        savePicturesToLocal(updatedPictures)
+      } else {
+        alert('Failed to delete picture from database')
+      }
     }
   }
 

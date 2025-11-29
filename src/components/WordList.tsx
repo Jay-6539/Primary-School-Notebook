@@ -1,19 +1,9 @@
 import { useState, useEffect, useMemo } from 'react'
 import './WordList.css'
+import { fetchWords, saveWord, deleteWord, fetchSpellingHistory, saveSpellingHistory, fetchRecognitionHistory, saveRecognitionHistory, type Word } from '../lib/supabaseService'
 
 type WordType = 'recognition' | 'spelling'
 type WordLevel = 'starters' | 'movers' | 'flyers'
-
-interface Word {
-  id: string
-  word: string
-  translation: string
-  type: WordType
-  dateAdded: string
-  level?: WordLevel // For spelling words
-  needsReview?: boolean // For spelling words that need review
-  lastReviewed?: string
-}
 
 interface SpellingAttempt {
   date: string
@@ -79,78 +69,128 @@ function getTranslation(word: string): Promise<string> {
 
 const WordList = () => {
   const [activeTab, setActiveTab] = useState<WordType>('recognition')
-  const [words, setWords] = useState<Word[]>(() => {
-    try {
-      const savedV2 = localStorage.getItem(LOCAL_STORAGE_KEY)
-      if (savedV2) {
-        return JSON.parse(savedV2)
-      }
-
-      const legacy = localStorage.getItem('aiden-words')
-      if (legacy) {
-        const parsedLegacy = JSON.parse(legacy)
-        if (Array.isArray(parsedLegacy)) {
-          const migrated: Word[] = parsedLegacy.map((item: any) => ({
-            id: item.id || Date.now().toString(),
-            word: item.word,
-            translation: item.translation || wordDictionary[item.word?.toLowerCase()] || item.word,
-            type: 'recognition',
-            dateAdded: item.dateAdded || new Date().toISOString()
-          }))
-          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(migrated))
-          return migrated
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load words:', error)
-    }
-    return []
-  })
+  const [words, setWords] = useState<Word[]>([])
   const [inputWord, setInputWord] = useState('')
   const [isAdding, setIsAdding] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const [todaySpellingWords, setTodaySpellingWords] = useState<string[]>([])
   const [currentSpellingIndex, setCurrentSpellingIndex] = useState(0)
   const [spellingResults, setSpellingResults] = useState<Record<string, boolean>>({})
-  const [spellingHistory, setSpellingHistory] = useState<Record<string, SpellingHistory>>(() => {
-    try {
-      const saved = localStorage.getItem('aiden-spelling-history')
-      if (saved) {
-        return JSON.parse(saved)
-      }
-    } catch (error) {
-      console.error('Failed to load spelling history:', error)
-    }
-    return {}
-  })
-
-  const [recognitionHistory, setRecognitionHistory] = useState<Record<string, RecognitionHistory>>(() => {
-    try {
-      const saved = localStorage.getItem('aiden-recognition-history')
-      if (saved) {
-        return JSON.parse(saved)
-      }
-    } catch (error) {
-      console.error('Failed to load recognition history:', error)
-    }
-    return {}
-  })
+  const [spellingHistory, setSpellingHistory] = useState<Record<string, SpellingHistory>>({})
+  const [recognitionHistory, setRecognitionHistory] = useState<Record<string, RecognitionHistory>>({})
 
   const LOCAL_STORAGE_KEY = 'aiden-words-v2'
   const SPELLING_SESSION_KEY = 'spelling-session'
   const SPELLING_HISTORY_KEY = 'aiden-spelling-history'
   const RECOGNITION_HISTORY_KEY = 'aiden-recognition-history'
 
+  // Load data from Supabase on mount
   useEffect(() => {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(words))
-  }, [words])
+    const loadData = async () => {
+      setIsLoading(true)
+      try {
+        // Try to load from Supabase first
+        const [supabaseWords, supabaseSpellingHistory, supabaseRecognitionHistory] = await Promise.all([
+          fetchWords(),
+          fetchSpellingHistory(),
+          fetchRecognitionHistory()
+        ])
 
-  useEffect(() => {
-    localStorage.setItem(SPELLING_HISTORY_KEY, JSON.stringify(spellingHistory))
-  }, [spellingHistory])
+        if (supabaseWords.length > 0) {
+          setWords(supabaseWords)
+        } else {
+          // Fallback to localStorage if Supabase is empty
+          const savedV2 = localStorage.getItem(LOCAL_STORAGE_KEY)
+          if (savedV2) {
+            const localWords = JSON.parse(savedV2)
+            setWords(localWords)
+            // Migrate to Supabase
+            for (const word of localWords) {
+              await saveWord(word)
+            }
+          }
+        }
 
+        if (Object.keys(supabaseSpellingHistory).length > 0) {
+          setSpellingHistory(supabaseSpellingHistory)
+        } else {
+          const saved = localStorage.getItem(SPELLING_HISTORY_KEY)
+          if (saved) {
+            const localHistory = JSON.parse(saved)
+            setSpellingHistory(localHistory)
+            await saveSpellingHistory(localHistory)
+          }
+        }
+
+        if (Object.keys(supabaseRecognitionHistory).length > 0) {
+          setRecognitionHistory(supabaseRecognitionHistory)
+        } else {
+          const saved = localStorage.getItem(RECOGNITION_HISTORY_KEY)
+          if (saved) {
+            const localHistory = JSON.parse(saved)
+            setRecognitionHistory(localHistory)
+            await saveRecognitionHistory(localHistory)
+          }
+        }
+      } catch (error) {
+        console.error('Error loading data:', error)
+        // Fallback to localStorage on error
+        try {
+          const savedV2 = localStorage.getItem(LOCAL_STORAGE_KEY)
+          if (savedV2) {
+            setWords(JSON.parse(savedV2))
+          }
+          const savedSpelling = localStorage.getItem(SPELLING_HISTORY_KEY)
+          if (savedSpelling) {
+            setSpellingHistory(JSON.parse(savedSpelling))
+          }
+          const savedRecognition = localStorage.getItem(RECOGNITION_HISTORY_KEY)
+          if (savedRecognition) {
+            setRecognitionHistory(JSON.parse(savedRecognition))
+          }
+        } catch (e) {
+          console.error('Error loading from localStorage:', e)
+        }
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    loadData()
+  }, [])
+
+  // Sync words to Supabase and localStorage
   useEffect(() => {
-    localStorage.setItem(RECOGNITION_HISTORY_KEY, JSON.stringify(recognitionHistory))
-  }, [recognitionHistory])
+    if (words.length > 0 && !isLoading) {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(words))
+      // Sync to Supabase (debounced)
+      const timeoutId = setTimeout(() => {
+        words.forEach(word => saveWord(word).catch(console.error))
+      }, 500)
+      return () => clearTimeout(timeoutId)
+    }
+  }, [words, isLoading])
+
+  // Sync spelling history to Supabase and localStorage
+  useEffect(() => {
+    if (Object.keys(spellingHistory).length > 0 && !isLoading) {
+      localStorage.setItem(SPELLING_HISTORY_KEY, JSON.stringify(spellingHistory))
+      const timeoutId = setTimeout(() => {
+        saveSpellingHistory(spellingHistory).catch(console.error)
+      }, 500)
+      return () => clearTimeout(timeoutId)
+    }
+  }, [spellingHistory, isLoading])
+
+  // Sync recognition history to Supabase and localStorage
+  useEffect(() => {
+    if (Object.keys(recognitionHistory).length > 0 && !isLoading) {
+      localStorage.setItem(RECOGNITION_HISTORY_KEY, JSON.stringify(recognitionHistory))
+      const timeoutId = setTimeout(() => {
+        saveRecognitionHistory(recognitionHistory).catch(console.error)
+      }, 500)
+      return () => clearTimeout(timeoutId)
+    }
+  }, [recognitionHistory, isLoading])
 
   // Load or create today's spelling session
   useEffect(() => {
@@ -297,17 +337,24 @@ const WordList = () => {
     try {
       const translation = await getTranslation(wordToAdd)
       const newWord: Word = {
-        id: Date.now().toString(),
+        id: crypto.randomUUID(),
         word: inputWord.trim(),
         translation,
         type: 'recognition',
         dateAdded: new Date().toISOString()
       }
-      setWords([...words, newWord])
-      setInputWord('')
-      // Record initial view when word is added
-      recordRecognitionView(inputWord.trim())
+      // Save to Supabase first
+      const success = await saveWord(newWord)
+      if (success) {
+        setWords([...words, newWord])
+        setInputWord('')
+        // Record initial view when word is added
+        recordRecognitionView(inputWord.trim())
+      } else {
+        alert('Failed to save word to database')
+      }
     } catch (error) {
+      console.error('Error adding word:', error)
       alert('Failed to add word')
     } finally {
       setIsAdding(false)
@@ -392,9 +439,14 @@ const WordList = () => {
     }
   }
 
-  const handleDeleteWord = (id: string) => {
+  const handleDeleteWord = async (id: string) => {
     if (confirm('Delete this word?')) {
-      setWords(words.filter(w => w.id !== id))
+      const success = await deleteWord(id)
+      if (success) {
+        setWords(words.filter(w => w.id !== id))
+      } else {
+        alert('Failed to delete word from database')
+      }
     }
   }
 

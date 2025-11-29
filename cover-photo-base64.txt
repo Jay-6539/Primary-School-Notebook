@@ -1,0 +1,8 @@
+﻿所在位置 行:1 字符: 98
++ ... ublic\cover-photo.jpg');  = [System.Convert]::ToBase64String(); Write ...
++                                                                  ~
+“(”后面应为表达式。
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordEx 
+   ception
+    + FullyQualifiedErrorId : ExpectedExpression
+ 
