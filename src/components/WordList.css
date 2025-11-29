@@ -288,6 +288,70 @@
   font-weight: 600;
 }
 
+.history-description {
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  font-style: italic;
+}
+
+.history-item {
+  padding: 1rem;
+}
+
+.history-item.mastered {
+  border-left: 3px solid #4caf50;
+  background: #f1f8f4;
+}
+
+.history-item.needs-practice {
+  border-left: 3px solid #ff9800;
+}
+
+.history-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #e0e0e0;
+}
+
+.history-stat {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+}
+
+.stat-label {
+  color: #888;
+  font-weight: 500;
+}
+
+.stat-value {
+  color: #333;
+  font-weight: 600;
+}
+
+.error-count.has-errors {
+  color: #d32f2f;
+}
+
+.error-count.no-errors {
+  color: #4caf50;
+}
+
+.mastered-badge {
+  padding: 0.25rem 0.6rem;
+  background: #4caf50;
+  color: white;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-left: auto;
+}
+
 @media (max-width: 768px) {
   .add-word-input-container {
     flex-direction: column;

@@ -15,6 +15,19 @@ interface Word {
   lastReviewed?: string
 }
 
+interface SpellingAttempt {
+  date: string
+  correct: boolean
+}
+
+interface SpellingHistory {
+  word: string
+  attempts: SpellingAttempt[]
+  totalErrors: number
+  lastAttemptDate: string
+  mastered: boolean // If last attempt was correct, mark as mastered
+}
+
 // Cambridge English word lists (sample - you can expand this)
 const SPELLING_WORD_BANKS: Record<WordLevel, string[]> = {
   starters: [
@@ -90,13 +103,29 @@ const WordList = () => {
   const [todaySpellingWords, setTodaySpellingWords] = useState<string[]>([])
   const [currentSpellingIndex, setCurrentSpellingIndex] = useState(0)
   const [spellingResults, setSpellingResults] = useState<Record<string, boolean>>({})
+  const [spellingHistory, setSpellingHistory] = useState<Record<string, SpellingHistory>>(() => {
+    try {
+      const saved = localStorage.getItem('aiden-spelling-history')
+      if (saved) {
+        return JSON.parse(saved)
+      }
+    } catch (error) {
+      console.error('Failed to load spelling history:', error)
+    }
+    return {}
+  })
 
   const LOCAL_STORAGE_KEY = 'aiden-words-v2'
   const SPELLING_SESSION_KEY = 'spelling-session'
+  const SPELLING_HISTORY_KEY = 'aiden-spelling-history'
 
   useEffect(() => {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(words))
   }, [words])
+
+  useEffect(() => {
+    localStorage.setItem(SPELLING_HISTORY_KEY, JSON.stringify(spellingHistory))
+  }, [spellingHistory])
 
   // Load or create today's spelling session
   useEffect(() => {
@@ -126,13 +155,43 @@ const WordList = () => {
       ...SPELLING_WORD_BANKS.movers,
       ...SPELLING_WORD_BANKS.flyers
     ]
+    
+    // Get words with errors from history (not mastered)
+    const errorWords = Object.values(spellingHistory)
+      .filter(h => !h.mastered && h.totalErrors > 0)
+      .sort((a, b) => b.totalErrors - a.totalErrors) // Sort by error count descending
+      .map(h => h.word)
+    
+    // Get words that need review from words list
     const reviewWords = words
       .filter(w => w.type === 'spelling' && w.needsReview)
       .map(w => w.word)
     
-    // Mix review words with new random words
+    // Combine error words and review words, remove duplicates
+    const priorityWords = [...new Set([...errorWords, ...reviewWords])]
+    
+    // Select up to 10 words: prioritize error words, then fill with random new words
+    const selected: string[] = []
+    const usedWords = new Set<string>()
+    
+    // First, add priority words (up to 10)
+    for (const word of priorityWords) {
+      if (selected.length >= 10) break
+      if (!usedWords.has(word.toLowerCase())) {
+        selected.push(word)
+        usedWords.add(word.toLowerCase())
+      }
+    }
+    
+    // Fill remaining slots with random words from word banks
     const shuffled = [...allWords].sort(() => Math.random() - 0.5)
-    const selected = [...new Set([...reviewWords.slice(0, 3), ...shuffled])].slice(0, 10)
+    for (const word of shuffled) {
+      if (selected.length >= 10) break
+      if (!usedWords.has(word.toLowerCase())) {
+        selected.push(word)
+        usedWords.add(word.toLowerCase())
+      }
+    }
     
     setTodaySpellingWords(selected)
     setCurrentSpellingIndex(0)
@@ -186,8 +245,46 @@ const WordList = () => {
     const newResults = { ...spellingResults, [word]: correct }
     setSpellingResults(newResults)
 
+    // Record spelling history
+    const today = new Date().toISOString().split('T')[0]
+    const wordLower = word.toLowerCase()
+    const existingHistory = spellingHistory[wordLower]
+    
+    const newAttempt: SpellingAttempt = {
+      date: today,
+      correct
+    }
+    
+    let updatedHistory: SpellingHistory
+    if (existingHistory) {
+      // Add new attempt to existing history
+      const updatedAttempts = [...existingHistory.attempts, newAttempt]
+      const totalErrors = updatedAttempts.filter(a => !a.correct).length
+      updatedHistory = {
+        word: word,
+        attempts: updatedAttempts,
+        totalErrors,
+        lastAttemptDate: today,
+        mastered: correct // If current attempt is correct, mark as mastered
+      }
+    } else {
+      // Create new history entry
+      updatedHistory = {
+        word: word,
+        attempts: [newAttempt],
+        totalErrors: correct ? 0 : 1,
+        lastAttemptDate: today,
+        mastered: correct
+      }
+    }
+    
+    setSpellingHistory({
+      ...spellingHistory,
+      [wordLower]: updatedHistory
+    })
+
     // Update or create word record
-    const existing = words.find(w => w.word.toLowerCase() === word.toLowerCase() && w.type === 'spelling')
+    const existing = words.find(w => w.word.toLowerCase() === wordLower && w.type === 'spelling')
     if (existing) {
       setWords(words.map(w => 
         w.id === existing.id
@@ -199,7 +296,7 @@ const WordList = () => {
       const newWord: Word = {
         id: Date.now().toString(),
         word: word,
-        translation: wordDictionary[word.toLowerCase()] || word,
+        translation: wordDictionary[wordLower] || word,
         type: 'spelling',
         dateAdded: new Date().toISOString(),
         needsReview: true,
@@ -369,6 +466,60 @@ const WordList = () => {
                     <button className="delete-btn-small" onClick={() => handleDeleteWord(word.id)}>×</button>
                   </div>
                 ))
+              )}
+            </div>
+          </div>
+
+          <div className="spelling-words-section">
+            <h3>Spelling History</h3>
+            <p className="history-description">All words Aiden has practiced, with dates and error counts</p>
+            <div className="words-list-compact">
+              {Object.keys(spellingHistory).length === 0 ? (
+                <div className="empty-state">No spelling history yet. Start practicing to see records here!</div>
+              ) : (
+                Object.values(spellingHistory)
+                  .sort((a, b) => {
+                    // Sort by last attempt date (most recent first), then by error count
+                    const dateCompare = new Date(b.lastAttemptDate).getTime() - new Date(a.lastAttemptDate).getTime()
+                    if (dateCompare !== 0) return dateCompare
+                    return b.totalErrors - a.totalErrors
+                  })
+                  .map(history => {
+                    const firstAttemptDate = history.attempts[0]?.date || history.lastAttemptDate
+                    const translation = wordDictionary[history.word.toLowerCase()] || history.word
+                    
+                    return (
+                      <div key={history.word} className={`word-item-compact history-item ${history.mastered ? 'mastered' : 'needs-practice'}`}>
+                        <div className="word-main">
+                          <span className="word-text-compact">{history.word}</span>
+                          <span className="word-translation-compact">{translation}</span>
+                          <div className="history-stats">
+                            <span className="history-stat">
+                              <span className="stat-label">First:</span>
+                              <span className="stat-value">{new Date(firstAttemptDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                            </span>
+                            <span className="history-stat">
+                              <span className="stat-label">Last:</span>
+                              <span className="stat-value">{new Date(history.lastAttemptDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                            </span>
+                            <span className="history-stat">
+                              <span className="stat-label">Errors:</span>
+                              <span className={`stat-value error-count ${history.totalErrors > 0 ? 'has-errors' : 'no-errors'}`}>
+                                {history.totalErrors}
+                              </span>
+                            </span>
+                            <span className="history-stat">
+                              <span className="stat-label">Attempts:</span>
+                              <span className="stat-value">{history.attempts.length}</span>
+                            </span>
+                            {history.mastered && (
+                              <span className="mastered-badge">✓ Mastered</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })
               )}
             </div>
           </div>
