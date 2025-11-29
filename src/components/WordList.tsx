@@ -28,6 +28,14 @@ interface SpellingHistory {
   mastered: boolean // If last attempt was correct, mark as mastered
 }
 
+interface RecognitionHistory {
+  word: string
+  viewDates: string[] // Dates when the word was viewed/practiced
+  totalViews: number
+  lastViewedDate: string
+  firstViewedDate: string
+}
+
 // Cambridge English word lists (sample - you can expand this)
 const SPELLING_WORD_BANKS: Record<WordLevel, string[]> = {
   starters: [
@@ -115,9 +123,22 @@ const WordList = () => {
     return {}
   })
 
+  const [recognitionHistory, setRecognitionHistory] = useState<Record<string, RecognitionHistory>>(() => {
+    try {
+      const saved = localStorage.getItem('aiden-recognition-history')
+      if (saved) {
+        return JSON.parse(saved)
+      }
+    } catch (error) {
+      console.error('Failed to load recognition history:', error)
+    }
+    return {}
+  })
+
   const LOCAL_STORAGE_KEY = 'aiden-words-v2'
   const SPELLING_SESSION_KEY = 'spelling-session'
   const SPELLING_HISTORY_KEY = 'aiden-spelling-history'
+  const RECOGNITION_HISTORY_KEY = 'aiden-recognition-history'
 
   useEffect(() => {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(words))
@@ -126,6 +147,10 @@ const WordList = () => {
   useEffect(() => {
     localStorage.setItem(SPELLING_HISTORY_KEY, JSON.stringify(spellingHistory))
   }, [spellingHistory])
+
+  useEffect(() => {
+    localStorage.setItem(RECOGNITION_HISTORY_KEY, JSON.stringify(recognitionHistory))
+  }, [recognitionHistory])
 
   // Load or create today's spelling session
   useEffect(() => {
@@ -215,6 +240,42 @@ const WordList = () => {
     [words]
   )
 
+  const recordRecognitionView = (word: string) => {
+    const today = new Date().toISOString().split('T')[0]
+    const wordLower = word.toLowerCase()
+    const existingHistory = recognitionHistory[wordLower]
+    
+    let updatedHistory: RecognitionHistory
+    if (existingHistory) {
+      // Add today's date if not already recorded
+      const viewDates = existingHistory.viewDates.includes(today)
+        ? existingHistory.viewDates
+        : [...existingHistory.viewDates, today]
+      
+      updatedHistory = {
+        word: word,
+        viewDates,
+        totalViews: viewDates.length,
+        lastViewedDate: today,
+        firstViewedDate: existingHistory.firstViewedDate
+      }
+    } else {
+      // Create new history entry
+      updatedHistory = {
+        word: word,
+        viewDates: [today],
+        totalViews: 1,
+        lastViewedDate: today,
+        firstViewedDate: today
+      }
+    }
+    
+    setRecognitionHistory({
+      ...recognitionHistory,
+      [wordLower]: updatedHistory
+    })
+  }
+
   const handleAddRecognitionWord = async () => {
     const wordToAdd = inputWord.trim().toLowerCase()
     if (!wordToAdd || words.some(w => w.word.toLowerCase() === wordToAdd && w.type === 'recognition')) {
@@ -234,6 +295,8 @@ const WordList = () => {
       }
       setWords([...words, newWord])
       setInputWord('')
+      // Record initial view when word is added
+      recordRecognitionView(inputWord.trim())
     } catch (error) {
       alert('Failed to add word')
     } finally {
@@ -399,7 +462,10 @@ const WordList = () => {
                     <span className="word-translation-compact">{word.translation}</span>
                     <button 
                       className="speech-btn" 
-                      onClick={() => speakWord(word.word)}
+                      onClick={() => {
+                        speakWord(word.word)
+                        recordRecognitionView(word.word)
+                      }}
                       title="Play pronunciation"
                       aria-label={`Pronounce ${word.word}`}
                     >
@@ -410,6 +476,61 @@ const WordList = () => {
                 </div>
               ))
             )}
+          </div>
+
+          <div className="spelling-words-section">
+            <h3>Recognition History</h3>
+            <p className="history-description">Track when Aiden practices recognition words</p>
+            <div className="words-list-compact">
+              {Object.keys(recognitionHistory).length === 0 ? (
+                <div className="empty-state">No recognition history yet. Click the 🔊 button to start tracking!</div>
+              ) : (
+                Object.values(recognitionHistory)
+                  .sort((a, b) => {
+                    // Sort by last viewed date (most recent first), then by total views
+                    const dateCompare = new Date(b.lastViewedDate).getTime() - new Date(a.lastViewedDate).getTime()
+                    if (dateCompare !== 0) return dateCompare
+                    return b.totalViews - a.totalViews
+                  })
+                  .map(history => {
+                    const translation = wordDictionary[history.word.toLowerCase()] || history.word
+                    
+                    return (
+                      <div key={history.word} className="word-item-compact history-item">
+                        <div className="word-main">
+                          <span className="word-text-compact">{history.word}</span>
+                          <span className="word-translation-compact">{translation}</span>
+                          <button 
+                            className="speech-btn" 
+                            onClick={() => {
+                              speakWord(history.word)
+                              recordRecognitionView(history.word)
+                            }}
+                            title="Play pronunciation"
+                            aria-label={`Pronounce ${history.word}`}
+                          >
+                            🔊
+                          </button>
+                          <div className="history-stats">
+                            <span className="history-stat">
+                              <span className="stat-label">First:</span>
+                              <span className="stat-value">{new Date(history.firstViewedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                            </span>
+                            <span className="history-stat">
+                              <span className="stat-label">Last:</span>
+                              <span className="stat-value">{new Date(history.lastViewedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                            </span>
+                            <span className="history-stat">
+                              <span className="stat-label">Views:</span>
+                              <span className="stat-value">{history.totalViews}</span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })
+              )}
+            </div>
           </div>
         </>
       )}
