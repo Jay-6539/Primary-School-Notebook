@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react'
-import { fetchPictures, savePicture, deletePicture } from '../lib/supabaseService'
+import { fetchPictures, savePicture, deletePicture, type Picture } from '../lib/supabaseService'
 
-interface Picture {
+interface LocalPicture {
   id: string
   url: string
   title?: string
   isUploaded?: boolean // To distinguish uploaded images from default ones
 }
 
-const defaultPictures: Picture[] = [
+const defaultPictures: LocalPicture[] = [
   {
     id: '1',
     url: 'https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?w=400',
@@ -42,21 +42,26 @@ const defaultPictures: Picture[] = [
 ]
 
 const PictureWall = () => {
-  const [pictures, setPictures] = useState<Picture[]>(defaultPictures)
-  const [selectedPicture, setSelectedPicture] = useState<Picture | null>(null)
+  const [pictures, setPictures] = useState<LocalPicture[]>(defaultPictures)
+  const [selectedPicture, setSelectedPicture] = useState<LocalPicture | null>(null)
   const [showUploadForm, setShowUploadForm] = useState(false)
   const [uploadTitle, setUploadTitle] = useState('')
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
-  const [isLoading, setIsLoading] = useState(true)
 
   // Load uploaded pictures from Supabase on mount
   useEffect(() => {
     const loadPictures = async () => {
-      setIsLoading(true)
       try {
         const supabasePictures = await fetchPictures()
         if (supabasePictures.length > 0) {
-          setPictures([...defaultPictures, ...supabasePictures])
+          // Convert Supabase Picture to LocalPicture
+          const localPictures: LocalPicture[] = supabasePictures.map(p => ({
+            id: p.id,
+            url: p.url,
+            title: p.title,
+            isUploaded: p.isUploaded
+          }))
+          setPictures([...defaultPictures, ...localPictures])
         } else {
           // Fallback to localStorage
           const savedPictures = localStorage.getItem('aiden-picture-wall')
@@ -66,7 +71,13 @@ const PictureWall = () => {
               setPictures([...defaultPictures, ...uploadedPictures])
               // Migrate to Supabase
               for (const pic of uploadedPictures) {
-                await savePicture(pic)
+                const supabasePic: Picture = {
+                  id: pic.id,
+                  url: pic.url,
+                  title: pic.title,
+                  isUploaded: pic.isUploaded !== false
+                }
+                await savePicture(supabasePic)
               }
             } catch (e) {
               console.error('Error loading saved pictures:', e)
@@ -85,15 +96,13 @@ const PictureWall = () => {
             console.error('Error loading saved pictures:', e)
           }
         }
-      } finally {
-        setIsLoading(false)
       }
     }
     loadPictures()
   }, [])
 
   // Save uploaded pictures to localStorage (for backward compatibility)
-  const savePicturesToLocal = (newPictures: Picture[]) => {
+  const savePicturesToLocal = (newPictures: LocalPicture[]) => {
     const uploadedPictures = newPictures.filter(p => p.isUploaded)
     localStorage.setItem('aiden-picture-wall', JSON.stringify(uploadedPictures))
   }
@@ -109,11 +118,11 @@ const PictureWall = () => {
       return
     }
 
-    const newPictures: Promise<Picture>[] = selectedFiles.map((file, index) => {
+    const newPictures: Promise<LocalPicture>[] = selectedFiles.map((file, index) => {
       const reader = new FileReader()
       const id = `uploaded-${Date.now()}-${index}`
       
-      return new Promise<Picture>((resolve) => {
+      return new Promise<LocalPicture>((resolve) => {
         reader.onload = (event) => {
           resolve({
             id,
@@ -129,7 +138,13 @@ const PictureWall = () => {
     Promise.all(newPictures).then(async (uploadedPictures) => {
       // Save to Supabase
       for (const pic of uploadedPictures) {
-        await savePicture(pic)
+        const supabasePic: Picture = {
+          id: pic.id,
+          url: pic.url,
+          title: pic.title,
+          isUploaded: pic.isUploaded !== false
+        }
+        await savePicture(supabasePic)
       }
       const updatedPictures = [...pictures, ...uploadedPictures]
       setPictures(updatedPictures)

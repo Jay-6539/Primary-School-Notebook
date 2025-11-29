@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import './ParentFeedback.css'
-import { fetchParentFeedback, saveParentFeedback } from '../lib/supabaseService'
-import { fetchBankEntries, saveBankEntry } from '../lib/supabaseService'
+import { fetchParentFeedback, saveParentFeedback, saveBankEntry } from '../lib/supabaseService'
 
 type Parent = 'dad' | 'mom'
 type Metric = 'accuracy' | 'attitude'
