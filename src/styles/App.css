@@ -112,6 +112,23 @@ p {
   gap: var(--section-gap);
 }
 
+.cover-photo-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-bottom: var(--section-gap);
+}
+
+.cover-photo {
+  width: 100%;
+  max-width: 800px;
+  height: auto;
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  border: 1px solid var(--card-border);
+  object-fit: cover;
+}
+
 .section-card,
 .personal-summary,
 .chatbot,

@@ -72,6 +72,13 @@ function App() {
       <main className="main-content">
         {activeSection === 'home' && (
           <div className="home-section">
+            <div className="cover-photo-container">
+              <img 
+                src="/cover-photo.jpg" 
+                alt="Family Photo" 
+                className="cover-photo"
+              />
+            </div>
             <PersonalInfo />
             <ParentFeedback />
           </div>
