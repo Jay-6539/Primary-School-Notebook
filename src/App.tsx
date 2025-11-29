@@ -8,7 +8,6 @@ import PictureWall from './components/PictureWall'
 import ExamRecords from './components/ExamRecords'
 import WordList from './components/WordList'
 import Bank from './components/Bank'
-import DataMigration from './components/DataMigration'
 import './styles/App.css'
 
 function App() {
@@ -67,12 +66,6 @@ function App() {
           >
             Aiden Bank
           </button>
-          <button 
-            className={activeSection === 'migration' ? 'active' : ''}
-            onClick={() => setActiveSection('migration')}
-          >
-            Data Migration
-          </button>
         </nav>
       </header>
 
@@ -90,7 +83,6 @@ function App() {
         {activeSection === 'exams' && <ExamRecords />}
         {activeSection === 'words' && <WordList />}
         {activeSection === 'bank' && <Bank />}
-        {activeSection === 'migration' && <DataMigration />}
       </main>
 
       <footer className="footer">
