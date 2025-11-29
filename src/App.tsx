@@ -8,6 +8,7 @@ import PictureWall from './components/PictureWall'
 import ExamRecords from './components/ExamRecords'
 import WordList from './components/WordList'
 import Bank from './components/Bank'
+import coverPhoto from './assets/cover-photo.jpg'
 import './styles/App.css'
 
 function App() {
@@ -74,7 +75,7 @@ function App() {
           <div className="home-section">
             <div className="cover-photo-container">
               <img 
-                src="/cover-photo.jpg" 
+                src={coverPhoto} 
                 alt="Family Photo" 
                 className="cover-photo"
               />
