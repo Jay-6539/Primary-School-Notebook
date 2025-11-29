@@ -325,6 +325,23 @@ const WordList = () => {
     }
   }
 
+  const speakWord = (word: string) => {
+    if ('speechSynthesis' in window) {
+      // Stop any ongoing speech
+      window.speechSynthesis.cancel()
+      
+      const utterance = new SpeechSynthesisUtterance(word)
+      utterance.lang = 'en-US'
+      utterance.rate = 0.9
+      utterance.pitch = 1
+      utterance.volume = 1
+      
+      window.speechSynthesis.speak(utterance)
+    } else {
+      alert('Your browser does not support text-to-speech')
+    }
+  }
+
   const currentSpellingWord = todaySpellingWords[currentSpellingIndex]
 
   return (
@@ -380,6 +397,14 @@ const WordList = () => {
                   <div className="word-main">
                     <span className="word-text-compact">{word.word}</span>
                     <span className="word-translation-compact">{word.translation}</span>
+                    <button 
+                      className="speech-btn" 
+                      onClick={() => speakWord(word.word)}
+                      title="Play pronunciation"
+                      aria-label={`Pronounce ${word.word}`}
+                    >
+                      🔊
+                    </button>
                   </div>
                   <button className="delete-btn-small" onClick={() => handleDeleteWord(word.id)}>×</button>
                 </div>
@@ -397,7 +422,17 @@ const WordList = () => {
                 Word {currentSpellingIndex + 1} of {todaySpellingWords.length}
               </div>
               <div className="spelling-word-display">
-                <h3>{currentSpellingWord}</h3>
+                <div className="spelling-word-with-audio">
+                  <h3>{currentSpellingWord}</h3>
+                  <button 
+                    className="speech-btn-large" 
+                    onClick={() => speakWord(currentSpellingWord)}
+                    title="Play pronunciation"
+                    aria-label={`Pronounce ${currentSpellingWord}`}
+                  >
+                    🔊
+                  </button>
+                </div>
                 <p>Can Aiden spell this word?</p>
               </div>
               <div className="spelling-actions">
@@ -441,6 +476,14 @@ const WordList = () => {
                         <span className="word-text-compact">{word.word}</span>
                         <span className="word-translation-compact">{word.translation}</span>
                         {word.level && <span className="word-level">{word.level}</span>}
+                        <button 
+                          className="speech-btn" 
+                          onClick={() => speakWord(word.word)}
+                          title="Play pronunciation"
+                          aria-label={`Pronounce ${word.word}`}
+                        >
+                          🔊
+                        </button>
                       </div>
                       <button className="delete-btn-small" onClick={() => handleDeleteWord(word.id)}>×</button>
                     </div>
@@ -462,6 +505,14 @@ const WordList = () => {
                       <span className="word-translation-compact">{word.translation}</span>
                       {word.level && <span className="word-level">{word.level}</span>}
                       {word.needsReview && <span className="review-badge">Review</span>}
+                      <button 
+                        className="speech-btn" 
+                        onClick={() => speakWord(word.word)}
+                        title="Play pronunciation"
+                        aria-label={`Pronounce ${word.word}`}
+                      >
+                        🔊
+                      </button>
                     </div>
                     <button className="delete-btn-small" onClick={() => handleDeleteWord(word.id)}>×</button>
                   </div>
@@ -493,6 +544,14 @@ const WordList = () => {
                         <div className="word-main">
                           <span className="word-text-compact">{history.word}</span>
                           <span className="word-translation-compact">{translation}</span>
+                          <button 
+                            className="speech-btn" 
+                            onClick={() => speakWord(history.word)}
+                            title="Play pronunciation"
+                            aria-label={`Pronounce ${history.word}`}
+                          >
+                            🔊
+                          </button>
                           <div className="history-stats">
                             <span className="history-stat">
                               <span className="stat-label">First:</span>
