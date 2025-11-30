@@ -472,7 +472,7 @@ const WordList = () => {
   return (
     <div className="word-list section-card">
       <div className="page-title">
-        <h2>📚 English Words</h2>
+        <h2>English Words</h2>
         <p>Switch between recognition words and daily spelling practice</p>
       </div>
       <div className="tabs">

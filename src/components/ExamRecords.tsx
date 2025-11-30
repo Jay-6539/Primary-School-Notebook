@@ -104,7 +104,7 @@ function ExamRecords() {
   return (
     <div className="exam-records section-card">
       <div className="page-title">
-        <h2>📝 Exam Records</h2>
+        <h2>Exam Records</h2>
         <p>Store every exam result, notes, and photos here</p>
         <button 
           className="primary-btn"
