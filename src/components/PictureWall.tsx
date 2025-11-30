@@ -14,10 +14,13 @@ const PictureWall = () => {
   const [showUploadForm, setShowUploadForm] = useState(false)
   const [uploadTitle, setUploadTitle] = useState('')
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [isUploading, setIsUploading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
   // Load uploaded pictures from Supabase on mount
   useEffect(() => {
     const loadPictures = async () => {
+      setIsLoading(true)
       try {
         const supabasePictures = await fetchPictures()
         if (supabasePictures.length > 0) {
@@ -29,6 +32,8 @@ const PictureWall = () => {
             isUploaded: p.isUploaded
           }))
           setPictures(localPictures)
+          // Also save to localStorage as backup
+          savePicturesToLocal(localPictures)
         } else {
           // Fallback to localStorage
           const savedPictures = localStorage.getItem('aiden-picture-wall')
@@ -46,6 +51,15 @@ const PictureWall = () => {
                 }
                 await savePicture(supabasePic)
               }
+              // Reload from Supabase after migration
+              const migratedPictures = await fetchPictures()
+              const localPictures: LocalPicture[] = migratedPictures.map(p => ({
+                id: p.id,
+                url: p.url,
+                title: p.title,
+                isUploaded: p.isUploaded
+              }))
+              setPictures(localPictures)
             } catch (e) {
               console.error('Error loading saved pictures:', e)
             }
@@ -63,6 +77,8 @@ const PictureWall = () => {
             console.error('Error loading saved pictures:', e)
           }
         }
+      } finally {
+        setIsLoading(false)
       }
     }
     loadPictures()
@@ -79,47 +95,74 @@ const PictureWall = () => {
     setSelectedFiles(files)
   }
 
-  const handleUpload = () => {
+  const handleUpload = async () => {
     if (selectedFiles.length === 0) {
-      alert('Please select at least one image to upload')
+      alert('请至少选择一张图片上传')
       return
     }
 
-    const newPictures: Promise<LocalPicture>[] = selectedFiles.map((file, index) => {
-      const reader = new FileReader()
-      const id = `uploaded-${Date.now()}-${index}`
-      
-      return new Promise<LocalPicture>((resolve) => {
-        reader.onload = (event) => {
-          resolve({
-            id,
-            url: event.target?.result as string,
-            title: selectedFiles.length === 1 ? uploadTitle : `${uploadTitle || 'Uploaded Image'} ${index + 1}`,
-            isUploaded: true
-          })
-        }
-        reader.readAsDataURL(file)
+    setIsUploading(true)
+    try {
+      const newPictures: Promise<LocalPicture>[] = selectedFiles.map((file, index) => {
+        const reader = new FileReader()
+        const id = `uploaded-${Date.now()}-${index}`
+        
+        return new Promise<LocalPicture>((resolve, reject) => {
+          reader.onload = (event) => {
+            resolve({
+              id,
+              url: event.target?.result as string,
+              title: selectedFiles.length === 1 ? uploadTitle : `${uploadTitle || '上传的图片'} ${index + 1}`,
+              isUploaded: true
+            })
+          }
+          reader.onerror = () => {
+            reject(new Error(`读取文件失败: ${file.name}`))
+          }
+          reader.readAsDataURL(file)
+        })
       })
-    })
 
-    Promise.all(newPictures).then(async (uploadedPictures) => {
+      const uploadedPictures = await Promise.all(newPictures)
+      
       // Save to Supabase
-      for (const pic of uploadedPictures) {
+      const savePromises = uploadedPictures.map(async (pic) => {
         const supabasePic: Picture = {
           id: pic.id,
           url: pic.url,
           title: pic.title,
           isUploaded: pic.isUploaded !== false
         }
-        await savePicture(supabasePic)
-      }
-      const updatedPictures = [...pictures, ...uploadedPictures]
-      setPictures(updatedPictures)
-      savePicturesToLocal(updatedPictures)
+        const success = await savePicture(supabasePic)
+        if (!success) {
+          throw new Error(`保存图片 ${pic.title || pic.id} 到数据库失败`)
+        }
+        return pic
+      })
+
+      await Promise.all(savePromises)
+      
+      // Reload from Supabase to ensure sync
+      const allPictures = await fetchPictures()
+      const localPictures: LocalPicture[] = allPictures.map(p => ({
+        id: p.id,
+        url: p.url,
+        title: p.title,
+        isUploaded: p.isUploaded
+      }))
+      
+      setPictures(localPictures)
+      savePicturesToLocal(localPictures)
       setSelectedFiles([])
       setUploadTitle('')
       setShowUploadForm(false)
-    })
+      alert(`成功上传 ${uploadedPictures.length} 张图片！`)
+    } catch (error) {
+      console.error('Error uploading pictures:', error)
+      alert(`上传失败: ${error instanceof Error ? error.message : '未知错误'}`)
+    } finally {
+      setIsUploading(false)
+    }
   }
 
   const handleDeletePicture = async (id: string, e: React.MouseEvent) => {
@@ -130,9 +173,16 @@ const PictureWall = () => {
       try {
         const success = await deletePicture(id)
         if (success) {
-          const updatedPictures = pictures.filter(p => p.id !== id)
-          setPictures(updatedPictures)
-          savePicturesToLocal(updatedPictures)
+          // Reload from Supabase to ensure sync
+          const allPictures = await fetchPictures()
+          const localPictures: LocalPicture[] = allPictures.map(p => ({
+            id: p.id,
+            url: p.url,
+            title: p.title,
+            isUploaded: p.isUploaded
+          }))
+          setPictures(localPictures)
+          savePicturesToLocal(localPictures)
         } else {
           alert('删除失败，请稍后重试')
         }
@@ -181,31 +231,50 @@ const PictureWall = () => {
               <p className="file-count">{selectedFiles.length} file(s) selected</p>
             )}
           </div>
-          <button className="upload-submit-btn" onClick={handleUpload}>
-            Upload Pictures
+          <button 
+            className="upload-submit-btn" 
+            onClick={handleUpload}
+            disabled={isUploading}
+          >
+            {isUploading ? '上传中...' : '上传图片'}
           </button>
         </div>
       )}
       
-      <div className="picture-grid">
-        {pictures.map((picture) => (
-          <div
-            key={picture.id}
-            className="picture-item"
-            onClick={() => setSelectedPicture(picture)}
-          >
-            <button
-              className="delete-picture-btn"
-              onClick={(e) => handleDeletePicture(picture.id, e)}
-              title="删除照片"
-            >
-              ×
-            </button>
-            <img src={picture.url} alt={picture.title || 'Picture'} />
-            {picture.title && <div className="picture-title">{picture.title}</div>}
-          </div>
-        ))}
-      </div>
+      {isLoading ? (
+        <div style={{ textAlign: 'center', padding: '2rem' }}>
+          <p>加载图片中...</p>
+        </div>
+      ) : (
+        <>
+          {pictures.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '2rem', color: '#666' }}>
+              <p>还没有上传任何图片</p>
+              <p style={{ fontSize: '0.9rem', marginTop: '0.5rem' }}>点击上方按钮开始上传</p>
+            </div>
+          ) : (
+            <div className="picture-grid">
+              {pictures.map((picture) => (
+                <div
+                  key={picture.id}
+                  className="picture-item"
+                  onClick={() => setSelectedPicture(picture)}
+                >
+                  <button
+                    className="delete-picture-btn"
+                    onClick={(e) => handleDeletePicture(picture.id, e)}
+                    title="删除照片"
+                  >
+                    ×
+                  </button>
+                  <img src={picture.url} alt={picture.title || 'Picture'} />
+                  {picture.title && <div className="picture-title">{picture.title}</div>}
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
 
       {selectedPicture && (
         <div className="picture-modal" onClick={() => setSelectedPicture(null)}>
