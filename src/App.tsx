@@ -3,7 +3,6 @@ import PersonalInfo from './components/PersonalInfo'
 import ParentFeedback from './components/ParentFeedback'
 import ChatBot from './components/ChatBot'
 import VideoGallery from './components/VideoGallery'
-import WeatherForecast from './components/WeatherForecast'
 import PictureWall from './components/PictureWall'
 import ExamRecords from './components/ExamRecords'
 import WordList from './components/WordList'
@@ -35,12 +34,6 @@ function App() {
             onClick={() => setActiveSection('videos')}
           >
             UNO Game
-          </button>
-          <button 
-            className={activeSection === 'weather' ? 'active' : ''}
-            onClick={() => setActiveSection('weather')}
-          >
-            Weather
           </button>
           <button 
             className={activeSection === 'pictures' ? 'active' : ''}
@@ -78,7 +71,6 @@ function App() {
         )}
         {activeSection === 'chat' && <ChatBot />}
         {activeSection === 'videos' && <VideoGallery />}
-        {activeSection === 'weather' && <WeatherForecast />}
         {activeSection === 'pictures' && <PictureWall />}
         {activeSection === 'exams' && <ExamRecords />}
         {activeSection === 'words' && <WordList />}
