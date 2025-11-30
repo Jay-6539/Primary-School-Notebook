@@ -157,14 +157,21 @@ const PictureWall = () => {
 
   const handleDeletePicture = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    if (confirm('Are you sure you want to delete this picture?')) {
-      const success = await deletePicture(id)
-      if (success) {
-        const updatedPictures = pictures.filter(p => p.id !== id)
-        setPictures(updatedPictures)
-        savePicturesToLocal(updatedPictures)
-      } else {
-        alert('Failed to delete picture from database')
+    const picture = pictures.find(p => p.id === id)
+    const pictureTitle = picture?.title || '这张照片'
+    if (confirm(`确定要删除 ${pictureTitle} 吗？此操作无法撤销。`)) {
+      try {
+        const success = await deletePicture(id)
+        if (success) {
+          const updatedPictures = pictures.filter(p => p.id !== id)
+          setPictures(updatedPictures)
+          savePicturesToLocal(updatedPictures)
+        } else {
+          alert('删除失败，请稍后重试')
+        }
+      } catch (error) {
+        console.error('Error deleting picture:', error)
+        alert('删除时发生错误，请稍后重试')
       }
     }
   }
