@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { fetchPictures, savePicture, deletePicture, type Picture } from '../lib/supabaseService'
+import { fetchPictures, savePicture, deletePicture, uploadPictureToStorage, type Picture } from '../lib/supabaseService'
 
 interface LocalPicture {
   id: string
@@ -103,29 +103,30 @@ const PictureWall = () => {
 
     setIsUploading(true)
     try {
-      const newPictures: Promise<LocalPicture>[] = selectedFiles.map((file, index) => {
-        const reader = new FileReader()
+      // Upload files to Supabase Storage
+      const uploadPromises = selectedFiles.map(async (file, index) => {
         const id = `uploaded-${Date.now()}-${index}`
-        
-        return new Promise<LocalPicture>((resolve, reject) => {
-          reader.onload = (event) => {
-            resolve({
-              id,
-              url: event.target?.result as string,
-              title: selectedFiles.length === 1 ? uploadTitle : `${uploadTitle || '上传的图片'} ${index + 1}`,
-              isUploaded: true
-            })
-          }
-          reader.onerror = () => {
-            reject(new Error(`读取文件失败: ${file.name}`))
-          }
-          reader.readAsDataURL(file)
-        })
+        const fileExtension = file.name.split('.').pop() || 'jpg'
+        const fileName = `${id}.${fileExtension}`
+        const title = selectedFiles.length === 1 ? uploadTitle : `${uploadTitle || '上传的图片'} ${index + 1}`
+
+        // Upload to Storage
+        const storageUrl = await uploadPictureToStorage(file, fileName)
+        if (!storageUrl) {
+          throw new Error(`上传文件 ${file.name} 到存储失败`)
+        }
+
+        return {
+          id,
+          url: storageUrl,
+          title,
+          isUploaded: true
+        } as LocalPicture
       })
 
-      const uploadedPictures = await Promise.all(newPictures)
+      const uploadedPictures = await Promise.all(uploadPromises)
       
-      // Save to Supabase
+      // Save picture metadata to database
       const savePromises = uploadedPictures.map(async (pic) => {
         const supabasePic: Picture = {
           id: pic.id,
@@ -171,7 +172,7 @@ const PictureWall = () => {
     const pictureTitle = picture?.title || '这张照片'
     if (confirm(`确定要删除 ${pictureTitle} 吗？此操作无法撤销。`)) {
       try {
-        const success = await deletePicture(id)
+        const success = await deletePicture(id, picture?.url)
         if (success) {
           // Reload from Supabase to ensure sync
           const allPictures = await fetchPictures()

@@ -296,6 +296,52 @@ export async function saveParentFeedback(date: string, feedback: any): Promise<b
 }
 
 // Picture operations
+const PICTURES_BUCKET = 'pictures' // Storage bucket name
+
+// Upload file to Supabase Storage
+export async function uploadPictureToStorage(file: File, fileName: string): Promise<string | null> {
+  const { data, error } = await supabase.storage
+    .from(PICTURES_BUCKET)
+    .upload(fileName, file, {
+      cacheControl: '3600',
+      upsert: false
+    })
+
+  if (error) {
+    console.error('Error uploading file to storage:', error)
+    return null
+  }
+
+  // Get public URL
+  const { data: urlData } = supabase.storage
+    .from(PICTURES_BUCKET)
+    .getPublicUrl(data.path)
+
+  return urlData.publicUrl
+}
+
+// Delete file from Supabase Storage
+export async function deletePictureFromStorage(fileUrl: string): Promise<boolean> {
+  // Extract file path from URL
+  // URL format: https://[project].supabase.co/storage/v1/object/public/pictures/[filename]
+  const urlMatch = fileUrl.match(/\/storage\/v1\/object\/public\/[^/]+\/(.+)$/)
+  if (!urlMatch) {
+    console.error('Invalid file URL:', fileUrl)
+    return false
+  }
+
+  const fileName = urlMatch[1]
+  const { error } = await supabase.storage
+    .from(PICTURES_BUCKET)
+    .remove([fileName])
+
+  if (error) {
+    console.error('Error deleting file from storage:', error)
+    return false
+  }
+  return true
+}
+
 export async function fetchPictures(): Promise<Picture[]> {
   const { data, error } = await supabase
     .from('pictures')
@@ -332,7 +378,25 @@ export async function savePicture(picture: Picture): Promise<boolean> {
   return true
 }
 
-export async function deletePicture(id: string): Promise<boolean> {
+export async function deletePicture(id: string, fileUrl?: string): Promise<boolean> {
+  // Delete from database
+  const { data: pictureData, error: fetchError } = await supabase
+    .from('pictures')
+    .select('url')
+    .eq('id', id)
+    .single()
+
+  if (fetchError) {
+    console.error('Error fetching picture for deletion:', fetchError)
+  }
+
+  // Delete from storage if URL is provided
+  const urlToDelete = fileUrl || pictureData?.url
+  if (urlToDelete && urlToDelete.includes('storage.supabase.co')) {
+    await deletePictureFromStorage(urlToDelete)
+  }
+
+  // Delete from database
   const { error } = await supabase
     .from('pictures')
     .delete()
