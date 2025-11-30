@@ -417,20 +417,50 @@ export async function fetchPictures(): Promise<Picture[]> {
 }
 
 export async function savePicture(picture: Picture): Promise<boolean> {
-  const { error } = await supabase
-    .from('pictures')
-    .upsert({
+  try {
+    console.log('[Database] 保存图片到数据库:', {
       id: picture.id,
-      url: picture.url,
-      title: picture.title || null,
-      is_uploaded: picture.isUploaded !== false
-    }, { onConflict: 'id' })
-  
-  if (error) {
-    console.error('Error saving picture:', error)
+      url: picture.url?.substring(0, 50) + '...',
+      title: picture.title,
+      isUploaded: picture.isUploaded
+    })
+    
+    const { data, error } = await supabase
+      .from('pictures')
+      .upsert({
+        id: picture.id,
+        url: picture.url,
+        title: picture.title || null,
+        is_uploaded: picture.isUploaded !== false
+      }, { onConflict: 'id' })
+    
+    if (error) {
+      console.error('[Database] ❌ 保存失败！')
+      console.error('[Database] 错误信息:', error.message)
+      console.error('[Database] 错误详情:', JSON.stringify(error, null, 2))
+      console.error('[Database] 尝试保存的数据:', {
+        id: picture.id,
+        idType: typeof picture.id,
+        idLength: picture.id?.length,
+        url: picture.url?.substring(0, 100),
+        title: picture.title
+      })
+      
+      // 检查是否是 UUID 格式问题
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+      if (picture.id && !uuidRegex.test(picture.id)) {
+        console.error(`[Database] ⚠️ ID 格式错误！当前 ID "${picture.id}" 不是有效的 UUID 格式。`)
+      }
+      
+      return false
+    }
+    
+    console.log('[Database] ✅ 图片已保存到数据库')
+    return true
+  } catch (error) {
+    console.error('[Database] ❌ 意外错误:', error)
     return false
   }
-  return true
 }
 
 export async function deletePicture(id: string, fileUrl?: string): Promise<boolean> {

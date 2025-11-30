@@ -129,9 +129,17 @@ const PictureWall = () => {
       
       for (let index = 0; index < selectedFiles.length; index++) {
         const file = selectedFiles[index]
-        const id = `uploaded-${Date.now()}-${index}`
+        // Generate UUID v4 format for database ID
+        const generateUUID = () => {
+          return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            const r = Math.random() * 16 | 0
+            const v = c === 'x' ? r : (r & 0x3 | 0x8)
+            return v.toString(16)
+          })
+        }
+        const id = generateUUID()
         const fileExtension = file.name.split('.').pop() || 'jpg'
-        const fileName = `${id}.${fileExtension}`
+        const fileName = `uploaded-${Date.now()}-${index}.${fileExtension}`
         const title = selectedFiles.length === 1 ? uploadTitle : `${uploadTitle || '上传的图片'} ${index + 1}`
 
         try {
