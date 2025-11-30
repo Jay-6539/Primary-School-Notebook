@@ -34,7 +34,7 @@ export interface BankEntry {
   date: string
   amount: number
   description: string
-  category: 'reward' | 'red-packet' | 'gift' | 'other'
+  category: 'reward' | 'red-packet' | 'gift' | 'other' | 'expense'
 }
 
 export interface Picture {
@@ -425,7 +425,7 @@ export async function savePicture(picture: Picture): Promise<boolean> {
       isUploaded: picture.isUploaded
     })
     
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('pictures')
       .upsert({
         id: picture.id,

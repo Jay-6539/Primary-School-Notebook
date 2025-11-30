@@ -1,17 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import './Bank.css'
-import { fetchBankEntries, saveBankEntry, deleteBankEntry } from '../lib/supabaseService'
+import { fetchBankEntries, saveBankEntry, deleteBankEntry, type BankEntry } from '../lib/supabaseService'
 
 type BankCategory = 'reward' | 'red-packet' | 'gift' | 'other' | 'expense'
 type TransactionType = 'income' | 'expense'
-
-interface BankEntry {
-  id: string
-  date: string
-  amount: number
-  description: string
-  category: BankCategory
-}
 
 const CATEGORY_LABELS: Record<BankCategory, string> = {
   reward: 'Reward',
