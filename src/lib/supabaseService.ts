@@ -301,7 +301,11 @@ const PICTURES_BUCKET = 'pictures' // Storage bucket name
 // Upload file to Supabase Storage
 export async function uploadPictureToStorage(file: File, fileName: string): Promise<string | null> {
   try {
-    console.log(`Uploading file to storage: ${fileName} (${(file.size / 1024 / 1024).toFixed(2)} MB)`)
+    const fileSizeMB = (file.size / 1024 / 1024).toFixed(2)
+    console.log(`[Storage Upload] 开始上传文件到 bucket "${PICTURES_BUCKET}"`)
+    console.log(`[Storage Upload] 文件名: ${fileName}`)
+    console.log(`[Storage Upload] 文件大小: ${fileSizeMB} MB`)
+    console.log(`[Storage Upload] 文件类型: ${file.type}`)
     
     const { data, error } = await supabase.storage
       .from(PICTURES_BUCKET)
@@ -311,15 +315,29 @@ export async function uploadPictureToStorage(file: File, fileName: string): Prom
       })
 
     if (error) {
-      console.error('Error uploading file to storage:', error)
-      console.error('Error details:', JSON.stringify(error, null, 2))
+      console.error('[Storage Upload] ❌ 上传失败！')
+      console.error('[Storage Upload] 错误代码:', error.statusCode)
+      console.error('[Storage Upload] 错误信息:', error.message)
+      console.error('[Storage Upload] 完整错误:', JSON.stringify(error, null, 2))
+      
+      // 提供更友好的错误提示
+      if (error.message?.includes('Bucket not found') || error.message?.includes('not found')) {
+        console.error(`[Storage Upload] ⚠️ Bucket "${PICTURES_BUCKET}" 不存在！请在 Supabase Dashboard 中创建此 bucket。`)
+      } else if (error.message?.includes('new row violates row-level security')) {
+        console.error(`[Storage Upload] ⚠️ 权限策略未正确设置！请执行 supabase-storage-policies.sql 文件。`)
+      } else if (error.message?.includes('File size exceeds')) {
+        console.error(`[Storage Upload] ⚠️ 文件大小超过限制！`)
+      }
+      
       return null
     }
 
     if (!data || !data.path) {
-      console.error('Upload succeeded but no data returned')
+      console.error('[Storage Upload] ❌ 上传返回数据为空')
       return null
     }
+
+    console.log(`[Storage Upload] ✅ 文件上传成功！路径: ${data.path}`)
 
     // Get public URL
     const { data: urlData } = supabase.storage
@@ -327,14 +345,14 @@ export async function uploadPictureToStorage(file: File, fileName: string): Prom
       .getPublicUrl(data.path)
 
     if (!urlData || !urlData.publicUrl) {
-      console.error('Failed to get public URL for uploaded file')
+      console.error('[Storage Upload] ❌ 无法获取公共 URL')
       return null
     }
 
-    console.log(`File uploaded successfully. Public URL: ${urlData.publicUrl}`)
+    console.log(`[Storage Upload] ✅ 公共 URL: ${urlData.publicUrl}`)
     return urlData.publicUrl
   } catch (error) {
-    console.error('Unexpected error uploading file:', error)
+    console.error('[Storage Upload] ❌ 意外错误:', error)
     return null
   }
 }

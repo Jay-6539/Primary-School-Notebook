@@ -119,65 +119,99 @@ const PictureWall = () => {
     }
 
     setIsUploading(true)
+    const uploadErrors: string[] = []
+    
     try {
-      // Upload files to Supabase Storage
-      const uploadPromises = selectedFiles.map(async (file, index) => {
+      console.log(`开始上传 ${selectedFiles.length} 张图片...`)
+      
+      // Upload files to Supabase Storage one by one to catch individual errors
+      const uploadedPictures: LocalPicture[] = []
+      
+      for (let index = 0; index < selectedFiles.length; index++) {
+        const file = selectedFiles[index]
         const id = `uploaded-${Date.now()}-${index}`
         const fileExtension = file.name.split('.').pop() || 'jpg'
         const fileName = `${id}.${fileExtension}`
         const title = selectedFiles.length === 1 ? uploadTitle : `${uploadTitle || '上传的图片'} ${index + 1}`
 
-        // Upload to Storage
-        const storageUrl = await uploadPictureToStorage(file, fileName)
-        if (!storageUrl) {
-          throw new Error(`上传文件 ${file.name} 到存储失败`)
-        }
+        try {
+          console.log(`正在上传第 ${index + 1}/${selectedFiles.length} 张图片: ${file.name}`)
+          
+          // Upload to Storage
+          const storageUrl = await uploadPictureToStorage(file, fileName)
+          if (!storageUrl) {
+            const errorMsg = `上传文件 ${file.name} 到存储失败。请检查：1) Storage bucket "pictures" 是否存在 2) 权限策略是否已设置 3) 浏览器控制台的错误信息`
+            console.error(errorMsg)
+            uploadErrors.push(errorMsg)
+            continue
+          }
 
-        return {
-          id,
-          url: storageUrl,
-          title,
-          isUploaded: true
-        } as LocalPicture
-      })
+          console.log(`图片 ${file.name} 上传成功，URL: ${storageUrl}`)
 
-      const uploadedPictures = await Promise.all(uploadPromises)
-      
-      // Save picture metadata to database
-      const savePromises = uploadedPictures.map(async (pic) => {
-        const supabasePic: Picture = {
-          id: pic.id,
-          url: pic.url,
-          title: pic.title,
-          isUploaded: pic.isUploaded !== false
-        }
-        const success = await savePicture(supabasePic)
-        if (!success) {
-          throw new Error(`保存图片 ${pic.title || pic.id} 到数据库失败`)
-        }
-        return pic
-      })
+          const picture: LocalPicture = {
+            id,
+            url: storageUrl,
+            title,
+            isUploaded: true
+          }
 
-      await Promise.all(savePromises)
+          // Save picture metadata to database
+          const supabasePic: Picture = {
+            id: picture.id,
+            url: picture.url,
+            title: picture.title,
+            isUploaded: picture.isUploaded !== false
+          }
+          
+          const success = await savePicture(supabasePic)
+          if (!success) {
+            const errorMsg = `保存图片 ${picture.title || picture.id} 到数据库失败`
+            console.error(errorMsg)
+            uploadErrors.push(errorMsg)
+            continue
+          }
+
+          uploadedPictures.push(picture)
+          console.log(`图片 ${file.name} 已保存到数据库`)
+        } catch (error) {
+          const errorMsg = `上传 ${file.name} 时出错: ${error instanceof Error ? error.message : '未知错误'}`
+          console.error(errorMsg, error)
+          uploadErrors.push(errorMsg)
+        }
+      }
+
+      if (uploadErrors.length > 0) {
+        alert(`部分图片上传失败：\n${uploadErrors.join('\n')}\n\n请检查浏览器控制台获取详细信息。`)
+      }
+
+      if (uploadedPictures.length > 0) {
+        // Reload from Supabase to ensure sync
+        const allPictures = await fetchPictures()
+        const localPictures: LocalPicture[] = allPictures.map(p => ({
+          id: p.id,
+          url: p.url,
+          title: p.title,
+          isUploaded: p.isUploaded
+        }))
+        
+        setPictures(localPictures)
+        savePicturesToLocal(localPictures)
+        
+        if (uploadedPictures.length === selectedFiles.length) {
+          alert(`成功上传 ${uploadedPictures.length} 张图片！`)
+        } else {
+          alert(`成功上传 ${uploadedPictures.length}/${selectedFiles.length} 张图片。${uploadErrors.length} 张失败。`)
+        }
+      } else {
+        alert(`所有图片上传失败。请检查：\n1. Storage bucket "pictures" 是否存在\n2. 权限策略是否已正确设置\n3. 浏览器控制台的错误信息\n\n错误详情：\n${uploadErrors.join('\n')}`)
+      }
       
-      // Reload from Supabase to ensure sync
-      const allPictures = await fetchPictures()
-      const localPictures: LocalPicture[] = allPictures.map(p => ({
-        id: p.id,
-        url: p.url,
-        title: p.title,
-        isUploaded: p.isUploaded
-      }))
-      
-      setPictures(localPictures)
-      savePicturesToLocal(localPictures)
       setSelectedFiles([])
       setUploadTitle('')
       setShowUploadForm(false)
-      alert(`成功上传 ${uploadedPictures.length} 张图片！`)
     } catch (error) {
       console.error('Error uploading pictures:', error)
-      alert(`上传失败: ${error instanceof Error ? error.message : '未知错误'}`)
+      alert(`上传失败: ${error instanceof Error ? error.message : '未知错误'}\n\n请检查浏览器控制台获取详细信息。`)
     } finally {
       setIsUploading(false)
     }
