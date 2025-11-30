@@ -70,3 +70,4 @@ WITH CHECK (bucket_id = 'pictures');
 4. 查看浏览器控制台的错误信息
 5. 确认 Supabase 项目 URL 和 API Key 正确
 
+

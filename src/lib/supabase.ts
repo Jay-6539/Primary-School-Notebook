@@ -46,7 +46,7 @@ export interface BankEntry {
   date: string
   amount: number
   description: string
-  category: 'reward' | 'red-packet' | 'gift' | 'other'
+  category: 'reward' | 'red-packet' | 'gift' | 'other' | 'expense'
   created_at?: string
   updated_at?: string
 }

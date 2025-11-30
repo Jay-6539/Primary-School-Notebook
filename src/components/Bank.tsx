@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import './Bank.css'
 import { fetchBankEntries, saveBankEntry, deleteBankEntry } from '../lib/supabaseService'
 
-type BankCategory = 'reward' | 'red-packet' | 'gift' | 'other'
+type BankCategory = 'reward' | 'red-packet' | 'gift' | 'other' | 'expense'
+type TransactionType = 'income' | 'expense'
 
 interface BankEntry {
   id: string
@@ -16,7 +17,8 @@ const CATEGORY_LABELS: Record<BankCategory, string> = {
   reward: 'Reward',
   'red-packet': 'Red Packet',
   gift: 'Gift',
-  other: 'Other'
+  other: 'Other',
+  expense: 'Expense'
 }
 
 const LOCAL_STORAGE_KEY = 'aiden-bank-entries'
@@ -28,6 +30,7 @@ const Bank = () => {
   const [entries, setEntries] = useState<BankEntry[]>([])
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState('')
+  const [transactionType, setTransactionType] = useState<TransactionType>('income')
   const [category, setCategory] = useState<BankCategory>('reward')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(true)
@@ -82,7 +85,10 @@ const Bank = () => {
   }, [entries, isLoading])
 
   const balance = useMemo(
-    () => entries.reduce((total, entry) => total + entry.amount, 0),
+    () => entries.reduce((total, entry) => {
+      // 如果是消费类型，金额为负数；否则为正数
+      return total + (entry.category === 'expense' ? -Math.abs(entry.amount) : entry.amount)
+    }, 0),
     [entries]
   )
 
@@ -100,12 +106,15 @@ const Bank = () => {
       return
     }
 
+    // 根据交易类型确定 category
+    const finalCategory: BankCategory = transactionType === 'expense' ? 'expense' : category
+
     const newEntry: BankEntry = {
       id: crypto.randomUUID(),
       date: new Date().toISOString(),
-      amount: parsedAmount,
+      amount: parsedAmount, // 存储为正数，计算余额时根据 category 判断
       description: description.trim(),
-      category
+      category: finalCategory
     }
 
     const success = await saveBankEntry(newEntry)
@@ -113,6 +122,7 @@ const Bank = () => {
       setEntries((prev) => [newEntry, ...prev])
       setDescription('')
       setAmount('')
+      setTransactionType('income')
       setCategory('reward')
     } else {
       setError('Failed to save entry to database')
@@ -160,12 +170,30 @@ const Bank = () => {
         <div className="bank-form">
           <h3>Add New Entry</h3>
           <div className="form-group">
+            <label>Transaction Type</label>
+            <select 
+              value={transactionType} 
+              onChange={(e) => {
+                const newType = e.target.value as TransactionType
+                setTransactionType(newType)
+                if (newType === 'expense') {
+                  setCategory('expense')
+                } else {
+                  setCategory('reward')
+                }
+              }}
+            >
+              <option value="income">Income (收入)</option>
+              <option value="expense">Expense (消费)</option>
+            </select>
+          </div>
+          <div className="form-group">
             <label>Description</label>
             <input
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="e.g., Homework reward, Birthday red packet"
+              placeholder={transactionType === 'expense' ? "e.g., Bought a toy, Snack purchase" : "e.g., Homework reward, Birthday red packet"}
             />
           </div>
           <div className="form-row">
@@ -180,20 +208,24 @@ const Bank = () => {
                 placeholder="e.g., 50"
               />
             </div>
-            <div className="form-group">
-              <label>Category</label>
-              <select value={category} onChange={(e) => setCategory(e.target.value as BankCategory)}>
-                {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {transactionType === 'income' && (
+              <div className="form-group">
+                <label>Category</label>
+                <select value={category} onChange={(e) => setCategory(e.target.value as BankCategory)}>
+                  {Object.entries(CATEGORY_LABELS)
+                    .filter(([value]) => value !== 'expense')
+                    .map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            )}
           </div>
           {error && <p className="error-message">{error}</p>}
           <button className="primary-btn" onClick={handleAddEntry}>
-            Add to Bank
+            {transactionType === 'expense' ? 'Record Expense' : 'Add to Bank'}
           </button>
 
           <div className="quick-add-section">
@@ -229,7 +261,9 @@ const Bank = () => {
                     </p>
                   </div>
                   <div className="history-amount">
-                    <span>{formatCurrency(entry.amount)}</span>
+                    <span className={entry.category === 'expense' ? 'amount-expense' : 'amount-income'}>
+                      {entry.category === 'expense' ? '-' : '+'}{formatCurrency(entry.amount)}
+                    </span>
                     <button className="delete-btn" onClick={() => handleDeleteEntry(entry.id)}>
                       ×
                     </button>

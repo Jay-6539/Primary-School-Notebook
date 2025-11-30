@@ -233,6 +233,12 @@
   border-color: #d1c4e9;
 }
 
+.tag-expense {
+  background: #ffebee;
+  color: #c62828;
+  border-color: #ffcdd2;
+}
+
 .history-amount {
   text-align: right;
   display: flex;
@@ -243,7 +249,14 @@
 
 .history-amount span {
   font-weight: 600;
-  color: #1a4d7a;
+}
+
+.amount-income {
+  color: #2e7d32;
+}
+
+.amount-expense {
+  color: #d32f2f;
 }
 
 .delete-btn {
