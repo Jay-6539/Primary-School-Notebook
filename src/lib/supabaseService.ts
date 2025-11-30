@@ -300,24 +300,43 @@ const PICTURES_BUCKET = 'pictures' // Storage bucket name
 
 // Upload file to Supabase Storage
 export async function uploadPictureToStorage(file: File, fileName: string): Promise<string | null> {
-  const { data, error } = await supabase.storage
-    .from(PICTURES_BUCKET)
-    .upload(fileName, file, {
-      cacheControl: '3600',
-      upsert: false
-    })
+  try {
+    console.log(`Uploading file to storage: ${fileName} (${(file.size / 1024 / 1024).toFixed(2)} MB)`)
+    
+    const { data, error } = await supabase.storage
+      .from(PICTURES_BUCKET)
+      .upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: false
+      })
 
-  if (error) {
-    console.error('Error uploading file to storage:', error)
+    if (error) {
+      console.error('Error uploading file to storage:', error)
+      console.error('Error details:', JSON.stringify(error, null, 2))
+      return null
+    }
+
+    if (!data || !data.path) {
+      console.error('Upload succeeded but no data returned')
+      return null
+    }
+
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from(PICTURES_BUCKET)
+      .getPublicUrl(data.path)
+
+    if (!urlData || !urlData.publicUrl) {
+      console.error('Failed to get public URL for uploaded file')
+      return null
+    }
+
+    console.log(`File uploaded successfully. Public URL: ${urlData.publicUrl}`)
+    return urlData.publicUrl
+  } catch (error) {
+    console.error('Unexpected error uploading file:', error)
     return null
   }
-
-  // Get public URL
-  const { data: urlData } = supabase.storage
-    .from(PICTURES_BUCKET)
-    .getPublicUrl(data.path)
-
-  return urlData.publicUrl
 }
 
 // Delete file from Supabase Storage
@@ -343,22 +362,41 @@ export async function deletePictureFromStorage(fileUrl: string): Promise<boolean
 }
 
 export async function fetchPictures(): Promise<Picture[]> {
-  const { data, error } = await supabase
-    .from('pictures')
-    .select('*')
-    .order('created_at', { ascending: false })
-  
-  if (error) {
-    console.error('Error fetching pictures:', error)
+  try {
+    console.log('Fetching pictures from Supabase...')
+    const { data, error } = await supabase
+      .from('pictures')
+      .select('*')
+      .order('created_at', { ascending: false })
+    
+    if (error) {
+      console.error('Error fetching pictures:', error)
+      return []
+    }
+    
+    if (!data) {
+      console.log('No pictures found in database')
+      return []
+    }
+    
+    console.log(`Loaded ${data.length} pictures from Supabase`)
+    const pictures = data.map(p => ({
+      id: p.id,
+      url: p.url,
+      title: p.title || undefined,
+      isUploaded: p.is_uploaded !== false
+    }))
+    
+    // Log URLs for debugging
+    pictures.forEach(p => {
+      console.log(`Picture ${p.id}: ${p.url}`)
+    })
+    
+    return pictures
+  } catch (error) {
+    console.error('Unexpected error fetching pictures:', error)
     return []
   }
-  
-  return data.map(p => ({
-    id: p.id,
-    url: p.url,
-    title: p.title || undefined,
-    isUploaded: p.is_uploaded !== false
-  }))
 }
 
 export async function savePicture(picture: Picture): Promise<boolean> {

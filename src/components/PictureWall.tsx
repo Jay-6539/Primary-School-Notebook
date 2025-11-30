@@ -22,7 +22,9 @@ const PictureWall = () => {
     const loadPictures = async () => {
       setIsLoading(true)
       try {
+        console.log('Loading pictures from Supabase...')
         const supabasePictures = await fetchPictures()
+        
         if (supabasePictures.length > 0) {
           // Convert Supabase Picture to LocalPicture
           const localPictures: LocalPicture[] = supabasePictures.map(p => ({
@@ -31,38 +33,53 @@ const PictureWall = () => {
             title: p.title,
             isUploaded: p.isUploaded
           }))
+          console.log(`Loaded ${localPictures.length} pictures from Supabase`)
           setPictures(localPictures)
           // Also save to localStorage as backup
           savePicturesToLocal(localPictures)
         } else {
-          // Fallback to localStorage
+          console.log('No pictures in Supabase, checking localStorage...')
+          // Fallback to localStorage (for migration)
           const savedPictures = localStorage.getItem('aiden-picture-wall')
           if (savedPictures) {
             try {
               const uploadedPictures = JSON.parse(savedPictures)
-              setPictures(uploadedPictures)
-              // Migrate to Supabase
-              for (const pic of uploadedPictures) {
-                const supabasePic: Picture = {
-                  id: pic.id,
-                  url: pic.url,
-                  title: pic.title,
-                  isUploaded: pic.isUploaded !== false
+              console.log(`Found ${uploadedPictures.length} pictures in localStorage, migrating...`)
+              
+              // Only migrate if they are base64 (old format), not Storage URLs
+              const needsMigration = uploadedPictures.some((p: LocalPicture) => 
+                p.url && p.url.startsWith('data:image')
+              )
+              
+              if (needsMigration) {
+                console.log('Detected base64 images, skipping migration (use Storage upload instead)')
+                setPictures([])
+              } else {
+                // These are already Storage URLs, just save to database
+                for (const pic of uploadedPictures) {
+                  const supabasePic: Picture = {
+                    id: pic.id,
+                    url: pic.url,
+                    title: pic.title,
+                    isUploaded: pic.isUploaded !== false
+                  }
+                  await savePicture(supabasePic)
                 }
-                await savePicture(supabasePic)
+                // Reload from Supabase after migration
+                const migratedPictures = await fetchPictures()
+                const localPictures: LocalPicture[] = migratedPictures.map(p => ({
+                  id: p.id,
+                  url: p.url,
+                  title: p.title,
+                  isUploaded: p.isUploaded
+                }))
+                setPictures(localPictures)
               }
-              // Reload from Supabase after migration
-              const migratedPictures = await fetchPictures()
-              const localPictures: LocalPicture[] = migratedPictures.map(p => ({
-                id: p.id,
-                url: p.url,
-                title: p.title,
-                isUploaded: p.isUploaded
-              }))
-              setPictures(localPictures)
             } catch (e) {
               console.error('Error loading saved pictures:', e)
             }
+          } else {
+            console.log('No pictures found in localStorage either')
           }
         }
       } catch (error) {
