@@ -114,7 +114,7 @@ const PictureWall = () => {
 
   const handleUpload = async () => {
     if (selectedFiles.length === 0) {
-      alert('请至少选择一张图片上传')
+      alert('Please select at least one image to upload')
       return
     }
 
@@ -140,7 +140,7 @@ const PictureWall = () => {
         const id = generateUUID()
         const fileExtension = file.name.split('.').pop() || 'jpg'
         const fileName = `uploaded-${Date.now()}-${index}.${fileExtension}`
-        const title = selectedFiles.length === 1 ? uploadTitle : `${uploadTitle || '上传的图片'} ${index + 1}`
+        const title = selectedFiles.length === 1 ? uploadTitle : `${uploadTitle || 'Uploaded image'} ${index + 1}`
 
         try {
           console.log(`正在上传第 ${index + 1}/${selectedFiles.length} 张图片: ${file.name}`)
@@ -148,7 +148,7 @@ const PictureWall = () => {
           // Upload to Storage
           const storageUrl = await uploadPictureToStorage(file, fileName)
           if (!storageUrl) {
-            const errorMsg = `上传文件 ${file.name} 到存储失败。请检查：1) Storage bucket "pictures" 是否存在 2) 权限策略是否已设置 3) 浏览器控制台的错误信息`
+            const errorMsg = `Failed to upload ${file.name} to storage. Please check: 1) Storage bucket "pictures" exists 2) Permission policies are set 3) Browser console for error details`
             console.error(errorMsg)
             uploadErrors.push(errorMsg)
             continue
@@ -173,7 +173,7 @@ const PictureWall = () => {
           
           const success = await savePicture(supabasePic)
           if (!success) {
-            const errorMsg = `保存图片 ${picture.title || picture.id} 到数据库失败`
+            const errorMsg = `Failed to save picture ${picture.title || picture.id} to database`
             console.error(errorMsg)
             uploadErrors.push(errorMsg)
             continue
@@ -182,14 +182,14 @@ const PictureWall = () => {
           uploadedPictures.push(picture)
           console.log(`图片 ${file.name} 已保存到数据库`)
         } catch (error) {
-          const errorMsg = `上传 ${file.name} 时出错: ${error instanceof Error ? error.message : '未知错误'}`
+          const errorMsg = `Error uploading ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`
           console.error(errorMsg, error)
           uploadErrors.push(errorMsg)
         }
       }
 
       if (uploadErrors.length > 0) {
-        alert(`部分图片上传失败：\n${uploadErrors.join('\n')}\n\n请检查浏览器控制台获取详细信息。`)
+        alert(`Some images failed to upload:\n${uploadErrors.join('\n')}\n\nPlease check the browser console for detailed information.`)
       }
 
       if (uploadedPictures.length > 0) {
@@ -206,12 +206,12 @@ const PictureWall = () => {
         savePicturesToLocal(localPictures)
         
         if (uploadedPictures.length === selectedFiles.length) {
-          alert(`成功上传 ${uploadedPictures.length} 张图片！`)
+          alert(`Successfully uploaded ${uploadedPictures.length} image(s)!`)
         } else {
-          alert(`成功上传 ${uploadedPictures.length}/${selectedFiles.length} 张图片。${uploadErrors.length} 张失败。`)
+          alert(`Successfully uploaded ${uploadedPictures.length}/${selectedFiles.length} image(s). ${uploadErrors.length} failed.`)
         }
       } else {
-        alert(`所有图片上传失败。请检查：\n1. Storage bucket "pictures" 是否存在\n2. 权限策略是否已正确设置\n3. 浏览器控制台的错误信息\n\n错误详情：\n${uploadErrors.join('\n')}`)
+        alert(`All images failed to upload. Please check:\n1. Storage bucket "pictures" exists\n2. Permission policies are correctly set\n3. Browser console for error details\n\nError details:\n${uploadErrors.join('\n')}`)
       }
       
       setSelectedFiles([])
@@ -219,7 +219,7 @@ const PictureWall = () => {
       setShowUploadForm(false)
     } catch (error) {
       console.error('Error uploading pictures:', error)
-      alert(`上传失败: ${error instanceof Error ? error.message : '未知错误'}\n\n请检查浏览器控制台获取详细信息。`)
+      alert(`Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}\n\nPlease check the browser console for detailed information.`)
     } finally {
       setIsUploading(false)
     }
@@ -228,8 +228,8 @@ const PictureWall = () => {
   const handleDeletePicture = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
     const picture = pictures.find(p => p.id === id)
-    const pictureTitle = picture?.title || '这张照片'
-    if (confirm(`确定要删除 ${pictureTitle} 吗？此操作无法撤销。`)) {
+    const pictureTitle = picture?.title || 'this picture'
+    if (confirm(`Are you sure you want to delete ${pictureTitle}? This action cannot be undone.`)) {
       try {
         const success = await deletePicture(id, picture?.url)
         if (success) {
@@ -244,11 +244,11 @@ const PictureWall = () => {
           setPictures(localPictures)
           savePicturesToLocal(localPictures)
         } else {
-          alert('删除失败，请稍后重试')
+          alert('Failed to delete. Please try again later.')
         }
       } catch (error) {
         console.error('Error deleting picture:', error)
-        alert('删除时发生错误，请稍后重试')
+        alert('An error occurred while deleting. Please try again later.')
       }
     }
   }
@@ -296,21 +296,21 @@ const PictureWall = () => {
             onClick={handleUpload}
             disabled={isUploading}
           >
-            {isUploading ? '上传中...' : '上传图片'}
+            {isUploading ? 'Uploading...' : 'Upload Pictures'}
           </button>
         </div>
       )}
       
       {isLoading ? (
         <div style={{ textAlign: 'center', padding: '2rem' }}>
-          <p>加载图片中...</p>
+          <p>Loading images...</p>
         </div>
       ) : (
         <>
           {pictures.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '2rem', color: '#666' }}>
-              <p>还没有上传任何图片</p>
-              <p style={{ fontSize: '0.9rem', marginTop: '0.5rem' }}>点击上方按钮开始上传</p>
+              <p>No images uploaded yet</p>
+              <p style={{ fontSize: '0.9rem', marginTop: '0.5rem' }}>Click the button above to start uploading</p>
             </div>
           ) : (
             <div className="picture-grid">
@@ -323,7 +323,7 @@ const PictureWall = () => {
                   <button
                     className="delete-picture-btn"
                     onClick={(e) => handleDeletePicture(picture.id, e)}
-                    title="删除照片"
+                    title="Delete photo"
                   >
                     ×
                   </button>

@@ -175,8 +175,8 @@ const Bank = () => {
                 }
               }}
             >
-              <option value="income">Income (收入)</option>
-              <option value="expense">Expense (消费)</option>
+              <option value="income">Income</option>
+              <option value="expense">Expense</option>
             </select>
           </div>
           <div className="form-group">
