@@ -8,41 +8,8 @@ interface LocalPicture {
   isUploaded?: boolean // To distinguish uploaded images from default ones
 }
 
-const defaultPictures: LocalPicture[] = [
-  {
-    id: '1',
-    url: 'https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?w=400',
-    title: 'Fun Drawing',
-  },
-  {
-    id: '2',
-    url: 'https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=400',
-    title: 'Reading Time',
-  },
-  {
-    id: '3',
-    url: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=400',
-    title: 'School Day',
-  },
-  {
-    id: '4',
-    url: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?w=400',
-    title: 'Learning',
-  },
-  {
-    id: '5',
-    url: 'https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?w=400',
-    title: 'Artwork',
-  },
-  {
-    id: '6',
-    url: 'https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=400',
-    title: 'Story Time',
-  },
-]
-
 const PictureWall = () => {
-  const [pictures, setPictures] = useState<LocalPicture[]>(defaultPictures)
+  const [pictures, setPictures] = useState<LocalPicture[]>([])
   const [selectedPicture, setSelectedPicture] = useState<LocalPicture | null>(null)
   const [showUploadForm, setShowUploadForm] = useState(false)
   const [uploadTitle, setUploadTitle] = useState('')
@@ -61,14 +28,14 @@ const PictureWall = () => {
             title: p.title,
             isUploaded: p.isUploaded
           }))
-          setPictures([...defaultPictures, ...localPictures])
+          setPictures(localPictures)
         } else {
           // Fallback to localStorage
           const savedPictures = localStorage.getItem('aiden-picture-wall')
           if (savedPictures) {
             try {
               const uploadedPictures = JSON.parse(savedPictures)
-              setPictures([...defaultPictures, ...uploadedPictures])
+              setPictures(uploadedPictures)
               // Migrate to Supabase
               for (const pic of uploadedPictures) {
                 const supabasePic: Picture = {
@@ -91,7 +58,7 @@ const PictureWall = () => {
         if (savedPictures) {
           try {
             const uploadedPictures = JSON.parse(savedPictures)
-            setPictures([...defaultPictures, ...uploadedPictures])
+            setPictures(uploadedPictures)
           } catch (e) {
             console.error('Error loading saved pictures:', e)
           }
@@ -227,15 +194,13 @@ const PictureWall = () => {
             className="picture-item"
             onClick={() => setSelectedPicture(picture)}
           >
-            {picture.isUploaded && (
-              <button
-                className="delete-picture-btn"
-                onClick={(e) => handleDeletePicture(picture.id, e)}
-                title="Delete picture"
-              >
-                ×
-              </button>
-            )}
+            <button
+              className="delete-picture-btn"
+              onClick={(e) => handleDeletePicture(picture.id, e)}
+              title="删除照片"
+            >
+              ×
+            </button>
             <img src={picture.url} alt={picture.title || 'Picture'} />
             {picture.title && <div className="picture-title">{picture.title}</div>}
           </div>
