@@ -316,7 +316,6 @@ export async function uploadPictureToStorage(file: File, fileName: string): Prom
 
     if (error) {
       console.error('[Storage Upload] ❌ 上传失败！')
-      console.error('[Storage Upload] 错误代码:', error.statusCode)
       console.error('[Storage Upload] 错误信息:', error.message)
       console.error('[Storage Upload] 完整错误:', JSON.stringify(error, null, 2))
       
