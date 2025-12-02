@@ -76,6 +76,9 @@ const WordList = () => {
   const [todaySpellingWords, setTodaySpellingWords] = useState<string[]>([])
   const [currentSpellingIndex, setCurrentSpellingIndex] = useState(0)
   const [spellingResults, setSpellingResults] = useState<Record<string, boolean>>({})
+  const [reviewSessionWords, setReviewSessionWords] = useState<string[]>([])
+  const [currentReviewIndex, setCurrentReviewIndex] = useState(0)
+  const [isReviewSessionActive, setIsReviewSessionActive] = useState(false)
   const [spellingHistory, setSpellingHistory] = useState<Record<string, SpellingHistory>>({})
   const [recognitionHistory, setRecognitionHistory] = useState<Record<string, RecognitionHistory>>({})
 
@@ -361,11 +364,7 @@ const WordList = () => {
     }
   }
 
-  const handleSpellingResult = (word: string, correct: boolean) => {
-    const newResults = { ...spellingResults, [word]: correct }
-    setSpellingResults(newResults)
-
-    // Record spelling history
+  const recordSpellingAttemptForHistory = (word: string, correct: boolean) => {
     const today = new Date().toISOString().split('T')[0]
     const wordLower = word.toLowerCase()
     const existingHistory = spellingHistory[wordLower]
@@ -424,6 +423,14 @@ const WordList = () => {
       }
       setWords([...words, newWord])
     }
+  }
+
+  const handleSpellingResult = (word: string, correct: boolean) => {
+    const newResults = { ...spellingResults, [word]: correct }
+    setSpellingResults(newResults)
+
+    // Record spelling history and update word status
+    recordSpellingAttemptForHistory(word, correct)
 
     // Move to next word
     if (currentSpellingIndex < todaySpellingWords.length - 1) {
@@ -436,6 +443,35 @@ const WordList = () => {
       }))
     } else {
       alert('Spelling session completed!')
+    }
+  }
+
+  const startReviewSession = () => {
+    const needingReview = spellingWords
+      .filter(w => w.needsReview)
+      .map(w => w.word)
+
+    if (needingReview.length === 0) {
+      alert('No words need review right now.')
+      return
+    }
+
+    setReviewSessionWords(needingReview)
+    setCurrentReviewIndex(0)
+    setIsReviewSessionActive(true)
+  }
+
+  const handleReviewResult = (word: string, correct: boolean) => {
+    // Record spelling history and update word status (including error counts)
+    recordSpellingAttemptForHistory(word, correct)
+
+    if (currentReviewIndex < reviewSessionWords.length - 1) {
+      setCurrentReviewIndex(currentReviewIndex + 1)
+    } else {
+      alert('Review session completed!')
+      setIsReviewSessionActive(false)
+      setReviewSessionWords([])
+      setCurrentReviewIndex(0)
     }
   }
 
@@ -468,6 +504,7 @@ const WordList = () => {
   }
 
   const currentSpellingWord = todaySpellingWords[currentSpellingIndex]
+  const currentReviewWord = reviewSessionWords[currentReviewIndex]
 
   return (
     <div className="word-list section-card">
@@ -646,7 +683,17 @@ const WordList = () => {
           )}
 
           <div className="spelling-words-section">
-            <h3>Words Needing Review</h3>
+            <div className="spelling-section-header">
+              <h3>Words Needing Review</h3>
+              {spellingWords.filter(w => w.needsReview).length > 0 && (
+                <button
+                  className="reset-session-btn"
+                  onClick={startReviewSession}
+                >
+                  Start Review from These Words
+                </button>
+              )}
+            </div>
             <div className="words-list-compact">
               {spellingWords.filter(w => w.needsReview).length === 0 ? (
                 <div className="empty-state">No words need review - great job!</div>
@@ -673,6 +720,42 @@ const WordList = () => {
                   ))
               )}
             </div>
+
+            {isReviewSessionActive && currentReviewWord && (
+              <div className="spelling-session">
+                <div className="spelling-progress">
+                  Review word {currentReviewIndex + 1} of {reviewSessionWords.length}
+                </div>
+                <div className="spelling-word-display">
+                  <div className="spelling-word-with-audio">
+                    <h3>{currentReviewWord}</h3>
+                    <button 
+                      className="speech-btn-large" 
+                      onClick={() => speakWord(currentReviewWord)}
+                      title="Play pronunciation"
+                      aria-label={`Pronounce ${currentReviewWord}`}
+                    >
+                      🔊
+                    </button>
+                  </div>
+                  <p>Can Aiden spell this review word?</p>
+                </div>
+                <div className="spelling-actions">
+                  <button
+                    className="spelling-btn correct"
+                    onClick={() => handleReviewResult(currentReviewWord, true)}
+                  >
+                    ✓ Correct
+                  </button>
+                  <button
+                    className="spelling-btn incorrect"
+                    onClick={() => handleReviewResult(currentReviewWord, false)}
+                  >
+                    ✗ Needs Review
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="spelling-words-section">
